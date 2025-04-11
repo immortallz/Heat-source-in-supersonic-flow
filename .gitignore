@@ -1,1 +1,7 @@
 initial_cone_flow/*.txt
+.vscode/
+Рунге-Кутта/*.txt
+*.txt
+*.o
+*.exe
+123.nb
