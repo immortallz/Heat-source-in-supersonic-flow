@@ -174,7 +174,8 @@ double r_b(double z) {
     return tan(PI / 6) * z;
 }
 
-double r_b_z(double z, double dz){
+double r_b_z(double z){
+    double dz = 1e-8;
     return (r_b(z + dz) - r_b(z - dz)) / dz * 0.5;
 }
 
@@ -202,10 +203,10 @@ double lambda_r(double rho, double p, double u, double v, double w)
     return lambda;
 }
 
-double lambda_th(double r, double rho, double p, double u, double v, double w)
-{
-    double lambda =
-        (abs(rho*v*w) + sqrt(p*rho*(v*v + w*w) - p*p))
-        / (rho*w*w - p) / r;
-    return lambda;
-}
+// double lambda_th(double r, double rho, double p, double u, double v, double w)
+// {
+//     double lambda =
+//         (abs(rho*v*w) + sqrt(p*rho*(v*v + w*w) - p*p))
+//         / (rho*w*w - p) / r;
+//     return lambda;
+// }
