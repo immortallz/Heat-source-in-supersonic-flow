@@ -6,7 +6,7 @@ int main()
 	double p0 = 101330, rho0 = 1.2255, V1, beta, theta0, Mach0;
 	double a0 = sqrt(gamma * p0 / rho0);
 	int theta0_int;
-	cout << "enter theta0" << endl;
+	cout << "enter theta0 (in degrees)" << endl;
 	cin >> theta0_int;
 	cout << "enter initial Mach" << endl;
 	cin >> Mach0;
@@ -29,7 +29,7 @@ int main()
 	v[0] = V1 * cos(beta);
 	v[1] = -rho1_rho2 * V1 * sin(beta);
 	vector<double> sol(2);
-	sol = RK(beta, theta0, -0.00001, v, "VR_Vtheta.txt", C);
+	sol = RK(beta, theta0, -0.00001, v, "VR_Vtheta_init.txt", C);
 	cout << "V_R, V_theta on body surface: " << sol[0] << ", " << sol[1] << endl;
 
 	double rho_s, p_s;
@@ -38,9 +38,9 @@ int main()
 
 	double C_entr = p0 / pow(rho0, gamma);
 
-	FILE *f_rho = fopen("rho.txt", "w"), *f_p = fopen("p.txt", "w");
+	FILE *f_rho = fopen("rho_init.txt", "w"), *f_p = fopen("p_init.txt", "w");
 
-	ifstream input("VR_Vtheta.txt");
+	ifstream input("VR_Vtheta_init.txt");
     if (!input) {
         cerr << "Не удалось открыть файл!" << endl;
         return 1;
