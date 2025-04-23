@@ -1,11 +1,11 @@
 #include "r.h"
 
 int solver() {
-    ofstream rho_out("rho.txt");
-    ofstream p_out("p.txt");
-    ofstream u_out("u.txt");
-    ofstream v_out("v.txt");
-    ofstream w_out("w.txt");
+    ofstream rho_out("rho_out.txt");
+    ofstream p_out("p_out.txt");
+    ofstream u_out("u_out.txt");
+    ofstream v_out("v_out.txt");
+    ofstream w_out("w_out.txt");
 
     int
         N = 10, // xi
@@ -18,11 +18,11 @@ int solver() {
         dxi = 1 / double(N - 1),
         dth = PI / double(M - 1),
         rho, p, u, v, w,
-        Mach = 3;
+        Mach_inf = 3;
 
-    double p0 = 101330, rho0 = 1.2255;
-    double a0 = sqrt(gamma * p0 / rho0);
-    double V_inf = Mach*a0;
+    double p_inf = 101330, rho_inf = 1.2255;
+    double a0 = sqrt(gamma * p_inf / rho_inf);
+    double V_inf = Mach_inf*a0;
 
     vector<vector<E_array>> E(N, vector<E_array>(M));
     vector<vector<F_array>> F(N, vector<F_array>(M));
@@ -40,9 +40,9 @@ int solver() {
 
     vector<double> phi_cone, rho_cone, p_cone, VR_cone, Vphi_cone;
     FILE *f_cone = fopen("rho.txt", "r");
-    double a, b, c;
     while(!feof(f_cone))
     {
+        double a, b;
         fscanf(f_cone, "%lf %lf", &a, &b);
         phi_cone.push_back(a);
         rho_cone.push_back(b);
@@ -51,6 +51,7 @@ int solver() {
     f_cone = fopen("p.txt", "r");
     while(!feof(f_cone))
     {
+        double a, b;
         fscanf(f_cone, "%lf %lf", &a, &b);
         p_cone.push_back(b);
     }
@@ -58,6 +59,7 @@ int solver() {
     f_cone = fopen("VR_Vtheta.txt", "r");
     while(!feof(f_cone))
     {
+        double a, b, c;
         fscanf(f_cone, "%lf %lf %lf", &a, &b, &c);
         VR_cone.push_back(b);
         Vphi_cone.push_back(c);
@@ -70,10 +72,10 @@ int solver() {
         dphi = (phi1 - phi0) / (phi_cone.size() - 1);
 
     std::cout << phi0 << " " << phi1 << " " << dphi << endl;
-    r_s0 = z0 * tan(phi1);
     r_b0 = z0 * tan(phi0);
-    r_s_z0 = tan(phi1);
+    r_s0 = z0 * tan(phi1);
     r_b_z0 = tan(phi0);
+    r_s_z0 = tan(phi1);
 
     for(int j = 0; j < M; j++)
     {
@@ -82,11 +84,10 @@ int solver() {
         r_s_z[j].push_back(r_s_z0);
     }
 
-    int idx_phi;
-
-    double r = 0, xi = 0, phi, theta, delta_th;
+    double r, xi = 0, phi, theta, delta_th;
     for(int i = 0; i < N; i++)
     {
+        int idx_phi;
         xi = i * dxi;
         r = r_from_xi(xi, r_s0, r_b0);
         phi = atan(r / z0);
@@ -130,13 +131,10 @@ int solver() {
         }
     }
 
-    for(int i = 0; i < N; i++)
-    {
+    for(int i = 0; i < N; i++){
         xi = i * dxi;
-        theta = 0;
         r = r_from_xi(xi, r_s0, r_b0);
-        for(int j = 0; j < M; j++)
-        {
+        for(int j = 0; j < M; j++){
             theta = j * dth;
             std::cout << "\nxi:" << xi << ", r: " << r << ", theta: " << theta << endl;
             printf(
@@ -179,11 +177,13 @@ int solver() {
     v_out << "\n";
     w_out << "\n";
 
-    double dz = 1, CFL = 0.9, lambda_xi, lambda_th;
+    double dz = 0.01, CFL = 0.9, lambda_xi, lambda_th;
     double MM, mm, xi_z_val, xi_r_val, xi_theta_val;
     vector<double> z_array;
+
+    // main loop
     while(z < L){
-        z_array.push_back(z);   
+        z_array.push_back(z);
         // dz calculation from Spectral method
         // for(int j = 0; j < M; j++)
         //     dr = min(dr, (r_s[j].back() - r_b(z))*dxi + r_b(z));
@@ -194,7 +194,7 @@ int solver() {
                 xi_r_val = xi_r(r_s[j].back(), r_b(z));
                 xi_theta_val = xi_theta(xi, r_s[j].back(), r_b(z), r_s_theta[j].back());
                 xi_z_val = xi_z(xi, r_s[j].back(), r_b(z), r_s_z[j].back(), r_b_z(z));
-                a = sqrt(gamma * p_array[i][j] / rho_array[i][j]);
+                double a = sqrt(gamma * p_array[i][j] / rho_array[i][j]);
                 MM = w_array[i][j] / a;
                 mm = (
                     u_array[i][j]*xi_r_val
@@ -218,14 +218,14 @@ int solver() {
                     )
                 ) / (w_array[i][j]*w_array[i][j]/a/a - 1) / r;
 
-                dz = min(dz, lambda_xi/dxi + lambda_th/dth);
+                dz = min(dz, 1 / (lambda_xi/dxi + lambda_th/dth));
             }
         }
-        dz *= CFL;
+        // dz *= CFL;
         int idx;
-        double r_s_theta_pred;
+        vector<double> r_s_theta_pred(M);
         for(int step = 0; step < 2; step++){ // step = 0: predictor, step = 1: corrector
-            for(int i = 1; i < N - 1; i++){
+            for(int i = 0; i < N; i++){
                 xi = i*dxi;
                 // Граница theta = 0
                 theta = 0;
@@ -247,7 +247,7 @@ int solver() {
                 //corrector
                 else{
                     F_array F_mirrored = (-1) * F[i][1];
-                    F_mirrored[3] *= -1;
+                    F_mirrored[2] = (-1) * F_mirrored[2];
                     idx = int(i == 0);
                     G_next[i][0] = corrector(
                         E[i - 1 + idx][0],
@@ -260,7 +260,6 @@ int solver() {
                         dxi, dth, dz
                     );
                 }
-                    
                 E[i][0] = get_E(G_next[i][0], r);
                 F[i][0] = get_F(G_next[i][0], r);
                 R[i][0] = get_R(G_next[i][0], r, q(r, theta, z));
@@ -318,12 +317,13 @@ int solver() {
                 }
     
                 // Граница theta = PI
+                theta = PI;
                 r = r_from_xi(xi, r_s[M - 1].back(), r_b(z));
     
                 // predictor
                 if(step == 0){
                     F_array F_mirrored = (-1) * F[i][M - 2];
-                    F_mirrored[3] *= -1;
+                    F_mirrored[2] = (-1) * F_mirrored[2];
                     idx = int(i == N - 1);
                     G_next[i][M - 1] = predictor(
                         E[i - idx][M - 1],
@@ -364,66 +364,93 @@ int solver() {
 
             // Метод Аббета (поправка на поверхности тела)
             for(int j = 0; j < M; j++){
-                theta = j*dth;
+                theta = j * dth;
                 double V_n = (u_array[0][j] - r_b_z(z)*w_array[0][j])
                     / sqrt(1 + r_b_z(z)*r_b_z(z)); // (V*, n)
+                double Mach = sqrt(
+                    (
+                        u_array[0][j]*u_array[0][j]
+                        + v_array[0][j]*v_array[0][j]
+                        + w_array[0][j]*w_array[0][j]
+                    )
+                    /
+                    (
+                        gamma * p_array[0][j] / rho_array[0][j]
+                    )
+                );
                 delta_th = asin(
-                    V_n / (
+                    V_n / sqrt(
                         u_array[0][j]*u_array[0][j]
                         + v_array[0][j]*v_array[0][j]
                         + w_array[0][j]*w_array[0][j]
                     )
                 );
-    
+
                 // Поправка давления
                 p_array[0][j] = p_array[0][j] * (
-                    1 + gamma*M*M*delta_th/sqrt(M*M - 1)
-                    + gamma*M*(((gamma + 1)*M*M*M*M - 4*(M*M - 1)) / (4*(M*M - 1)*(M*M - 1)))*delta_th*delta_th
+                    1 - gamma*Mach*Mach*delta_th/sqrt(Mach*Mach - 1)
+                    + gamma
+                        * Mach
+                        * ((gamma + 1)*Mach*Mach*Mach*Mach - 4*(Mach*Mach - 1))
+                        / (4*(Mach*Mach - 1)*(Mach*Mach - 1))
+                        * delta_th * delta_th
                 );
     
                 //Поправка плотности
-                rho_array[0][j] = rho0 * pow(p_array[0][j] / p0, 1/gamma);
+                rho_array[0][j] = rho_inf * pow(p_array[0][j] / p_inf, 1/gamma);
     
-                double H = gamma/(gamma - 1) * p0/rho0 + V_inf*V_inf;
+                double H = gamma/(gamma - 1) * p_inf/rho_inf + 0.5*V_inf*V_inf;
                 double V_abs = sqrt(2*(H - gamma/(gamma - 1) * p_array[0][j]/rho_array[0][j]));
     
-                double Vr, Vth, Vz;
+                double Vr_tau, Vth_tau, Vz_tau;
                 // V_tau:
-                Vr = u_array[0][j] - V_n / sqrt(1 + r_b_z(z)*r_b_z(z));
-                Vth = v_array[0][j];
-                Vz = w_array[0][j] + V_n * r_b_z(z) / sqrt(1 + r_b_z(z)*r_b_z(z));
+                Vr_tau = u_array[0][j] - V_n / sqrt(1 + r_b_z(z)*r_b_z(z));
+                Vth_tau = v_array[0][j];
+                Vz_tau = w_array[0][j] + V_n * r_b_z(z) / sqrt(1 + r_b_z(z)*r_b_z(z));
     
-                double V_tau_abs = Vr*Vr + Vth*Vth + Vz*Vz;
+                double V_tau_abs = sqrt(Vr_tau*Vr_tau + Vth_tau*Vth_tau + Vz_tau*Vz_tau);
                 //Поправка скорости
-                u_array[0][j] *= V_abs / V_tau_abs;
-                v_array[0][j] *= V_abs / V_tau_abs;
-                w_array[0][j] *= V_abs / V_tau_abs;
+                u_array[0][j] = Vr_tau * V_abs / V_tau_abs;
+                v_array[0][j] = Vth_tau * V_abs / V_tau_abs;
+                w_array[0][j] = Vz_tau * V_abs / V_tau_abs;
             }
             
+            // ПОПРАВКА ВЕКТОРОВ E F G R !!!!!!
+            // ПОПРАВКА ВЕКТОРОВ E F G R !!!!!!
+            // ПОПРАВКА ВЕКТОРОВ E F G R !!!!!!
 
             // Метод Томаса (поправка на поверхности ударной волны)
             for(int j = 0; j < M; j++){
                 // Давление не меняем
                 // Плотность из Р-Г
                 rho_array[N - 1][j] = (
-                    rho0
-                    * ((gamma + 1)*p_array[N - 1][j] + (gamma - 1)*p0)
-                    / ((gamma + 1)*p0 + (gamma - 1)*p_array[N - 1][j])
+                    rho_inf
+                    * ((gamma + 1)*p_array[N - 1][j] + (gamma - 1)*p_inf)
+                    / ((gamma + 1)*p_inf + (gamma - 1)*p_array[N - 1][j])
                 );
                 double V_inf_n = sqrt(
-                    ((gamma + 1)*p_array[N - 1][j] + (gamma - 1)*p0)
-                    / (2 * rho0)
+                    ((gamma + 1)*p_array[N - 1][j] + (gamma - 1)*p_inf)
+                    / (2 * rho_inf)
                 );
-                double V_n = rho0 / rho_array[N - 1][j] * V_inf_n;
+                double V_n = rho_inf / rho_array[N - 1][j] * V_inf_n;
                 // double beta = asin(V_inf_n / V_inf);
                 // r_s_z[j].push_back(tan(beta));
+
+                // r_s, r_s_theta, r_s_z calculation (pred-corr)
                 if(step == 0){
                     r_s[j].push_back(r_s[j].back() + r_s_z[j].back()*dz);
-                    r_s_theta_pred = r_s_theta[j].back();
-                    if(j == 0)
-                        r_s_theta[j].push_back(r_s_theta[j].back() + dz/dth*(r_s_z[j].back() - r_s_z[j + 1].back()));
-                    else
-                        r_s_theta[j].push_back(r_s_theta[j].back() + dz/dth*(r_s_z[j].back() - r_s_z[j - 1].back()));
+                    r_s_theta_pred[j] = r_s_theta[j].back();
+                    if(j == 0){
+                        r_s_theta[j].push_back(
+                            r_s_theta[j].back() + dz/dth*(r_s_z[j].back() - r_s_z[j + 1].back()) // симметрия j - 1 --> j + 1
+                        );
+                    }
+                    else{
+                        r_s_theta[j].push_back(
+                            r_s_theta[j].back() + dz/dth*(r_s_z[j].back() - r_s_z[j - 1].back())
+                        );
+                    }
+                    // new or old???????
                     r_s_z[j].push_back(
                         sqrt(
                             V_inf_n * V_inf_n
@@ -433,28 +460,32 @@ int solver() {
                     );
                 }
                 else{
-                    r_s[j].back() = r_s[j].back() + r_s_z[j].back()*dz;
-                    if(j < M - 1)
+                    // Нужно ли корректировать r_s???
+                    // r_s[j].back() = r_s[j].back() + r_s_z[j].back()*dz;
+                    if(j < M - 1){
                         r_s_theta[j].back() = (
-                            0.5 * (r_s_theta_pred + r_s_theta[j].back())
+                            0.5 * (r_s_theta_pred[j] + r_s_theta[j].back())
                             + 0.5 * dz/dth * (r_s_z[j + 1].back() - r_s_z[j].back())
                         );
-                    else
+                    }
+                    else{
                         r_s_theta[j].back() = (
-                            0.5 * (r_s_theta_pred + r_s_theta[j].back())
-                            + 0.5 * dz/dth * (r_s_z[j - 1].back() - r_s_z[j].back())
+                            0.5 * (r_s_theta_pred[j] + r_s_theta[j].back())
+                            + 0.5 * dz/dth * (r_s_z[j - 1].back() - r_s_z[j].back()) // симметрия
                         );
-                    r_s_z[j].back() = 
+                    }
+                    r_s_z[j].back() = (
                         sqrt(
                             V_inf_n * V_inf_n
                             * (1 + r_s_theta[j].back()*r_s_theta[j].back()/r_s[j].back()/r_s[j].back())
                             / (V_inf*V_inf - V_inf_n*V_inf_n)
-                        );
-
+                        )
+                    );
                 }
-                double nx, ny, nz, n_norm;
-                n_norm = (1 
-                    / sqrt(
+
+                // Нормаль к поверхности УВ
+                double nx, ny, nz, n_norm; // n = (nx, ny, nz)
+                n_norm = (1 / sqrt(
                         1
                         + r_s_z[j].back()*r_s_z[j].back()
                         + (r_s_theta[j].back()/r_s[j].back())*(r_s_theta[j].back()/r_s[j].back())
@@ -463,14 +494,15 @@ int solver() {
                 nx = 1 * n_norm;
                 ny = -r_s_theta[j].back() / r_s[j].back() * n_norm;
                 nz = -r_s_z[j].back() * n_norm;
-    
+                
+                // Касательный вектор к поверхности УВ
                 double V_inf_tau_x, V_inf_tau_y, V_inf_tau_z;
-                V_inf_tau_x = -V_inf_n * nx;
-                V_inf_tau_y = -V_inf_n * ny;
+                V_inf_tau_x = 0 - V_inf_n * nx;
+                V_inf_tau_y = 0 - V_inf_n * ny;
                 V_inf_tau_z = V_inf - V_inf_n * nz;
                 // double V_inf_n = sqrt(                                Проверить разницу V_inf_n
-                //     ((gamma + 1)*p_array[N - 1][j] + (gamma - 1)*p0)
-                //     / (2 * rho0)
+                //     ((gamma + 1)*p_array[N - 1][j] + (gamma - 1)*p_inf)
+                //     / (2 * rho_inf)
                 // );
                 u_array[N - 1][j] = V_inf_tau_x + V_n*nx;
                 v_array[N - 1][j] = V_inf_tau_y + V_n*ny;
@@ -482,8 +514,8 @@ int solver() {
                 xi = i * dxi;
                 for(int j = 0; j < M; j++){
                     theta = j * dth;
-                    r = r_from_xi(xi, r_s[0].back(), r_b(z));
-    
+                    r = r_from_xi(xi, r_s[j].back(), r_b(z));
+
                     G_next[i][j].data[0] = rho_array[i][j]*w_array[i][j];
                     G_next[i][j].data[1] = rho_array[i][j]*u_array[i][j]*w_array[i][j];
                     G_next[i][j].data[2] = rho_array[i][j]*v_array[i][j]*w_array[i][j];
@@ -499,6 +531,7 @@ int solver() {
                             )*0.5
                         )
                     );
+                    G_next[i][j] = G_next[i][j] * r;
                     
                     E[i][j] = get_E(G_next[i][j], r);
                     F[i][j] = get_F(G_next[i][j], r);
@@ -509,28 +542,52 @@ int solver() {
             for(int i = 0; i < N; i++){
                 xi = i * dxi;
                 for(int j = 0; j < M; j++){
-                    theta = j*dth;
+                    theta = j * dth;
                     r = r_from_xi(xi, r_s[j].back(), r_b(z));
-                    E[i][j] =
+                    E[i][j] = (
                         xi_r(r_s[j].back(), r_b(z))*E[i][j]
                         + xi_theta(xi, r_s[j].back(), r_b(z), r_s_theta[j].back())*F[i][j]
-                        + xi_z(xi, r_s[j].back(), r_b(z), r_s_z[j].back(), r_b_z(z))*G_next[i][j];
+                        + xi_z(xi, r_s[j].back(), r_b(z), r_s_z[j].back(), r_b_z(z))*G_next[i][j]
+                    );
 
-                    R[i][j] =
+                    R[i][j] = (
                         R[i][j]
-                        - r_s_theta[j].back()/(r_s[j].back() - r_b(z)) * F[i][j]
-                        - (r_s_z[j].back() - r_b_z(z))/(r_s[j].back() - r_b(z)) * G_next[i][j];
+                        - r_s_theta[j].back() / (r_s[j].back() - r_b(z)) * F[i][j]
+                        - (r_s_z[j].back() - r_b_z(z)) / (r_s[j].back() - r_b(z)) * G_next[i][j]
+                    );
 
-                    // обновление G_prev <-- G_next
+                    // обновление G_prev <-- G_next после корректора (после окончания полного шага)
                     if(step == 1)
                         G_prev[i][j] = G_next[i][j];
                 }
             }
         }
         // Запись в файл
-        // ...........
+        for(int i = 0; i < N; i++)
+        {
+            for(int j = 0; j < M; j++)
+            {
+                rho_out << rho_array[i][j] << " ";
+                p_out << p_array[i][j] << " ";
+                u_out << u_array[i][j] << " ";
+                v_out << v_array[i][j] << " ";
+                w_out << w_array[i][j] << " ";
+            }
+            rho_out << "\n";
+            p_out << "\n";
+            u_out << "\n";
+            v_out << "\n";
+            w_out << "\n";
+        }
+        rho_out << "\n";
+        p_out << "\n";
+        u_out << "\n";
+        v_out << "\n";
+        w_out << "\n";
 
         z += dz;
+
+        cout << "dz = " << dz << endl;
     }
     return 0;
 }
@@ -590,8 +647,8 @@ void test()
 
 int main()
 {
-    // solver();
-    test();
+    solver();
+    // test();
 
     return 0;
 }
