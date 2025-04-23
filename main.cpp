@@ -101,9 +101,9 @@ int solver() {
         u = VR_cone[idx_phi]*sin(phi_cone[idx_phi]) + Vphi_cone[idx_phi]*cos(phi_cone[idx_phi]);
         v = 0;
         w = VR_cone[idx_phi]*cos(phi_cone[idx_phi]) - Vphi_cone[idx_phi]*sin(phi_cone[idx_phi]);
-        printf(
-            "rho = %lf, p = %lf, u = %lf, v = %lf, w = %lf\n",
-            rho, p, u, v, w);
+        // printf(
+        //     "rho = %lf, p = %lf, u = %lf, v = %lf, w = %lf\n",
+        //     rho, p, u, v, w);
         for(int j = 0; j < M; j++)
         {
             theta = j * dth;
@@ -451,11 +451,7 @@ int solver() {
                 // Давление не меняем
                 // Плотность из Р-Г
                 if(debug && j == 0)
-                    cout << "\nTHOMAS METHOD:\nold rho = " << rho_array[N - 1][j] << " --> new rho = " << (
-                        rho_inf
-                        * ((gamma + 1)*p_array[N - 1][j] + (gamma - 1)*p_inf)
-                        / ((gamma + 1)*p_inf + (gamma - 1)*p_array[N - 1][j])
-                    ) << endl;
+                    cout<<"\nTHOMAS METHOD:\nold rho = "<<rho_array[N - 1][j]<<" --> new rho = "<<(rho_inf* ((gamma + 1)*p_array[N - 1][j] + (gamma - 1)*p_inf)/ ((gamma + 1)*p_inf + (gamma - 1)*p_array[N - 1][j])) << endl;
                 rho_array[N - 1][j] = (
                     rho_inf
                     * ((gamma + 1)*p_array[N - 1][j] + (gamma - 1)*p_inf)
