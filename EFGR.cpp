@@ -171,7 +171,7 @@ double r_from_xi(double xi, double r_s, double r_b)
 }
 
 double r_b(double z) {
-    return tan(PI / 12) * z;
+    return tan(PI / 12.0) * z;
 }
 
 double r_b_z(double z){

@@ -7,13 +7,15 @@ int solver() {
     ofstream v_out("v_out.txt");
     ofstream w_out("w_out.txt");
     ofstream r_s_out("r_s_out.txt");
+    ofstream r_s_theta_out("r_s_theta_out.txt");
+    ofstream r_s_z_out("r_s_z_out.txt");
 
     int
         N = 10, // xi
         M = 8; // theta
 
     double
-        z0 = 1, z = z0, L = 1.5*z,
+        z0 = 1.5, z = z0, L = z0 + 2,
         r_b0, r_b_z0,
         r_s0, r_s_z0,
         dxi = 1 / double(N - 1),
@@ -132,6 +134,11 @@ int solver() {
         }
     }
 
+    rho_out << z << "\n";
+    p_out << z << "\n";
+    u_out << z << "\n";
+    v_out << z << "\n";
+    w_out << z << "\n";
     for(int i = 0; i < N; i++){
         xi = i * dxi;
         r = r_from_xi(xi, r_s0, r_b0);
@@ -178,12 +185,19 @@ int solver() {
     v_out << "\n";
     w_out << "\n";
 
+    r_s_out << z << " ";
+    r_s_theta_out << z << " ";
+    r_s_z_out << z << " ";
     for(int j = 0; j < M; j++){
         r_s_out << r_s0 << " ";
+        r_s_theta_out << 0 << " ";
+        r_s_z_out << r_s_z0 << " ";
     }
     r_s_out << "\n";
+    r_s_theta_out << "\n";
+    r_s_z_out << "\n";
 
-    double dz = 0.01, CFL = 0.9, lambda_xi, lambda_th;
+    double dz, CFL = 0.9, lambda_xi, lambda_th;
     double MM, mm, xi_z_val, xi_r_val, xi_theta_val;
     vector<double> z_array;
 
@@ -229,9 +243,9 @@ int solver() {
                 dz = min(dz, 1 / (lambda_xi/dxi + lambda_th/dth));
             }
         }
-        // dz *= CFL;
+        dz *= CFL;
         int idx;
-        vector<double> r_s_theta_pred(M);
+        vector<double> r_s_theta_pred(M), r_s_pred(M);
         for(int step = 0; step < 2; step++){ // step = 0: predictor, step = 1: corrector
             for(int i = 0; i < N; i++){
                 xi = i*dxi;
@@ -242,6 +256,7 @@ int solver() {
                 // predictor
                 if(step == 0){
                     idx = int(i == N - 1);
+                    // std::cout << "u before predictor: " << G_prev[i][0].get_u() << endl;
                     G_next[i][0] = predictor(
                         E[i - idx][0],
                         E[i + 1 - idx][0],
@@ -251,12 +266,14 @@ int solver() {
                         R[i][0],
                         dxi, dth, dz
                     );
+                    // std::cout << "u after predictor: " << G_next[i][0].get_u() << endl;
                 }
                 //corrector
                 else{
                     F_array F_mirrored = (-1) * F[i][1];
                     F_mirrored[2] = (-1) * F_mirrored[2];
                     idx = int(i == 0);
+                    // std::cout << "u before corrector: " << G_next[i][0].get_u() << endl;
                     G_next[i][0] = corrector(
                         E[i - 1 + idx][0],
                         E[i + idx][0],
@@ -267,19 +284,11 @@ int solver() {
                         R[i][0],
                         dxi, dth, dz
                     );
+                    // std::cout << "u after corrector: " << G_next[i][0].get_u() << endl;
                 }
-                E[i][0] = get_E(G_next[i][0], r);
-                F[i][0] = get_F(G_next[i][0], r);
-                R[i][0] = get_R(G_next[i][0], r, q(r, theta, z));
-    
-    
-                // Восстановление физических величин по вектору G
-                rho_array[i][0] = G_next[i][0].get_rho(r);
-                p_array[i][0] = G_next[i][0].get_p(r);
-                u_array[i][0] = G_next[i][0].get_u();
-                v_array[i][0] = G_next[i][0].get_v();
-                w_array[i][0] = G_next[i][0].get_w();
-    
+            }
+            for(int i = 0; i < N; i++){
+                xi = i*dxi;
                 // Внутренние (по theta) узлы
                 for(int j = 1; j < M - 1; j++){
                     theta = j*dth;
@@ -312,21 +321,16 @@ int solver() {
                             dxi, dth, dz
                         );
                     }
-                    E[i][j] = get_E(G_next[i][j], r);
-                    F[i][j] = get_F(G_next[i][j], r);
-                    R[i][j] = get_R(G_next[i][j], r, q(r, theta, z));
-    
-                    // Восстановление физических величин по вектору G
-                    rho_array[i][j] = G_next[i][j].get_rho(r);
-                    p_array[i][j] = G_next[i][j].get_p(r);
-                    u_array[i][j] = G_next[i][j].get_u();
-                    v_array[i][j] = G_next[i][j].get_v();
-                    w_array[i][j] = G_next[i][j].get_w();
                 }
-    
+            }
+            
+            
+            for(int i = 0; i < N; i++){
+                xi = i*dxi;
                 // Граница theta = PI
                 theta = PI;
                 r = r_from_xi(xi, r_s[M - 1].back(), r_b(z));
+                // std::cout << "r and r_s: " << r << " " << r_s[M - 1].back() << endl;
     
                 // predictor
                 if(step == 0){
@@ -356,6 +360,49 @@ int solver() {
                         dxi, dth, dz
                     );
                 }
+            }
+            for(int i = 0; i < N; i++){
+                xi = i*dxi;
+                // Граница theta = 0
+                theta = 0;
+                r = r_from_xi(xi, r_s[0].back(), r_b(z));
+                E[i][0] = get_E(G_next[i][0], r);
+                F[i][0] = get_F(G_next[i][0], r);
+                R[i][0] = get_R(G_next[i][0], r, q(r, theta, z));
+    
+    
+                // Восстановление физических величин по вектору G
+                rho_array[i][0] = G_next[i][0].get_rho(r);
+                // std::cout << "rho[" << i << "][0] = " << rho_array[i][0] << endl;
+                p_array[i][0] = G_next[i][0].get_p(r);
+                u_array[i][0] = G_next[i][0].get_u();
+                // std::cout << "u[" << i << "][0] = " << u_array[i][0] << endl;
+                v_array[i][0] = G_next[i][0].get_v();
+                w_array[i][0] = G_next[i][0].get_w();
+            }
+            for(int i = 0; i < N; i++){
+                xi = i*dxi;
+                // Внутренние (по theta) узлы
+                for(int j = 1; j < M - 1; j++){
+                    theta = j*dth;
+                    r = r_from_xi(xi, r_s[j].back(), r_b(z));
+                    E[i][j] = get_E(G_next[i][j], r);
+                    F[i][j] = get_F(G_next[i][j], r);
+                    R[i][j] = get_R(G_next[i][j], r, q(r, theta, z));
+    
+                    // Восстановление физических величин по вектору G
+                    rho_array[i][j] = G_next[i][j].get_rho(r);
+                    p_array[i][j] = G_next[i][j].get_p(r);
+                    u_array[i][j] = G_next[i][j].get_u();
+                    v_array[i][j] = G_next[i][j].get_v();
+                    w_array[i][j] = G_next[i][j].get_w();
+                }
+            }
+            for(int i = 0; i < N; i++){
+                xi = i*dxi;
+                // Граница theta = PI
+                theta = PI;
+                r = r_from_xi(xi, r_s[M - 1].back(), r_b(z));
                 E[i][M - 1] = get_E(G_next[i][M - 1], r);
                 F[i][M - 1] = get_F(G_next[i][M - 1], r);
                 R[i][M - 1] = get_R(G_next[i][M - 1], r, q(r, theta, z));
@@ -395,11 +442,11 @@ int solver() {
                     )
                 );
                 if(debug && j == 0)
-                    cout << "\nABBET METHOD:\nV_n = " << V_n << "\nMach = " << Mach << "\ndelta_theta = " << delta_th << endl;
+                    std::cout << "\nABBET METHOD:\nV_n = " << V_n << "\nMach = " << Mach << "\ndelta_theta = " << delta_th << endl;
 
                 // Поправка давления
                 if(debug && j == 0)
-                    cout << "old p = " << p_array[0][j] << " --> new p = " << p_array[0][j] * (
+                    std::cout << "old p = " << p_array[0][j] << " --> new p = " << p_array[0][j] * (
                         1 - gamma*Mach*Mach*delta_th/sqrt(Mach*Mach - 1)
                         + gamma
                             * Mach
@@ -418,7 +465,7 @@ int solver() {
     
                 //Поправка плотности
                 if(debug && j == 0)
-                    cout << "old rho = " << rho_array[0][j] << " --> new rho = " << rho_inf * pow(p_array[0][j] / p_inf, 1/gamma) << endl;
+                    std::cout << "old rho = " << rho_array[0][j] << " --> new rho = " << rho_inf * pow(p_array[0][j] / p_inf, 1/gamma) << endl;
                 rho_array[0][j] = rho_inf * pow(p_array[0][j] / p_inf, 1/gamma);
     
                 double H = gamma/(gamma - 1) * p_inf/rho_inf + 0.5*V_inf*V_inf;
@@ -433,9 +480,9 @@ int solver() {
                 double V_tau_abs = sqrt(Vr_tau*Vr_tau + Vth_tau*Vth_tau + Vz_tau*Vz_tau);
                 //Поправка скорости
                 if(debug && j == 0){
-                    cout << "old u = " << u_array[0][j] << " --> new u = " << Vr_tau * V_abs / V_tau_abs << endl;
-                    cout << "old v = " << v_array[0][j] << " --> new v = " << Vth_tau * V_abs / V_tau_abs << endl;
-                    cout << "old w = " << w_array[0][j] << " --> new w = " << Vz_tau * V_abs / V_tau_abs << endl;
+                    std::cout << "old u = " << u_array[0][j] << " --> new u = " << Vr_tau * V_abs / V_tau_abs << endl;
+                    std::cout << "old v = " << v_array[0][j] << " --> new v = " << Vth_tau * V_abs / V_tau_abs << endl;
+                    std::cout << "old w = " << w_array[0][j] << " --> new w = " << Vz_tau * V_abs / V_tau_abs << endl;
                 }
                 u_array[0][j] = Vr_tau * V_abs / V_tau_abs;
                 v_array[0][j] = Vth_tau * V_abs / V_tau_abs;
@@ -451,7 +498,7 @@ int solver() {
                 // Давление не меняем
                 // Плотность из Р-Г
                 if(debug && j == 0)
-                    cout<<"\nTHOMAS METHOD:\nold rho = "<<rho_array[N - 1][j]<<" --> new rho = "<<(rho_inf* ((gamma + 1)*p_array[N - 1][j] + (gamma - 1)*p_inf)/ ((gamma + 1)*p_inf + (gamma - 1)*p_array[N - 1][j])) << endl;
+                    std::cout<<"\nTHOMAS METHOD:\nold rho = "<<rho_array[N - 1][j]<<" --> new rho = "<<(rho_inf* ((gamma + 1)*p_array[N - 1][j] + (gamma - 1)*p_inf)/ ((gamma + 1)*p_inf + (gamma - 1)*p_array[N - 1][j])) << endl;
                 rho_array[N - 1][j] = (
                     rho_inf
                     * ((gamma + 1)*p_array[N - 1][j] + (gamma - 1)*p_inf)
@@ -467,18 +514,21 @@ int solver() {
 
                 // r_s, r_s_theta, r_s_z calculation (pred-corr)
                 if(step == 0){
+                    r_s_pred[j] = r_s[j].back();
                     r_s[j].push_back(r_s[j].back() + r_s_z[j].back()*dz);
                     r_s_theta_pred[j] = r_s_theta[j].back();
                     if(j == 0){
                         r_s_theta[j].push_back(
                             r_s_theta[j].back() + dz/dth*(r_s_z[j].back() - r_s_z[j + 1].back()) // симметрия j - 1 --> j + 1
                         );
+                        std::cout << "r_s_theta[0] = " << r_s_theta[j].back() << endl;
                     }
                     else{
                         r_s_theta[j].push_back(
                             r_s_theta[j].back() + dz/dth*(r_s_z[j].back() - r_s_z[j - 1].back())
                         );
                     }
+                    r_s_theta[0].back() = 0; r_s_theta[M - 1].back() = 0;
                     // new or old???????
                     r_s_z[j].push_back(
                         sqrt(
@@ -490,7 +540,7 @@ int solver() {
                 }
                 else{
                     // Нужно ли корректировать r_s???
-                    // r_s[j].back() = r_s[j].back() + r_s_z[j].back()*dz;
+                    r_s[j].back() = 0.5*(r_s_pred[j] + r_s[j].back()) + 0.5*dz*r_s[j].back();
                     if(j < M - 1){
                         r_s_theta[j].back() = (
                             0.5 * (r_s_theta_pred[j] + r_s_theta[j].back())
@@ -502,7 +552,9 @@ int solver() {
                             0.5 * (r_s_theta_pred[j] + r_s_theta[j].back())
                             + 0.5 * dz/dth * (r_s_z[j - 1].back() - r_s_z[j].back()) // симметрия
                         );
+                        std::cout << "r_s_theta[M - 1] = " << r_s_theta[j].back() << endl;
                     }
+                    r_s_theta[0].back() = 0; r_s_theta[M - 1].back() = 0;
                     r_s_z[j].back() = (
                         sqrt(
                             V_inf_n * V_inf_n
@@ -534,9 +586,9 @@ int solver() {
                 //     / (2 * rho_inf)
                 // );
                 if(debug && j == 0){
-                    cout << "old u = " << u_array[N - 1][j] << " --> new u = " << V_inf_tau_x + V_n*nx << endl;
-                    cout << "old v = " << v_array[N - 1][j] << " --> new v = " << V_inf_tau_y + V_n*ny << endl;
-                    cout << "old w = " << w_array[N - 1][j] << " --> new w = " << V_inf_tau_z + V_n*nz << endl;
+                    std::cout << "old u = " << u_array[N - 1][j] << " --> new u = " << V_inf_tau_x + V_n*nx << endl;
+                    std::cout << "old v = " << v_array[N - 1][j] << " --> new v = " << V_inf_tau_y + V_n*ny << endl;
+                    std::cout << "old w = " << w_array[N - 1][j] << " --> new w = " << V_inf_tau_z + V_n*nz << endl;
                 }
                 u_array[N - 1][j] = V_inf_tau_x + V_n*nx;
                 v_array[N - 1][j] = V_inf_tau_y + V_n*ny;
@@ -596,7 +648,16 @@ int solver() {
                 }
             }
         }
+
+        z += dz;
+        std::cout << "dz = " << dz << endl;
+
         // Запись в файл
+        rho_out << z << "\n";
+        p_out << z << "\n";
+        u_out << z << "\n";
+        v_out << z << "\n";
+        w_out << z << "\n";
         for(int i = 0; i < N; i++)
         {
             for(int j = 0; j < M; j++)
@@ -619,13 +680,17 @@ int solver() {
         v_out << "\n";
         w_out << "\n";
 
+        r_s_out << z << " ";
+        r_s_theta_out << z << " ";
+        r_s_z_out << z << " ";
         for(int j = 0; j < M; j++){
             r_s_out << r_s[j].back() << " ";
+            r_s_theta_out << r_s_theta[j].back() << " ";
+            r_s_z_out << r_s_z[j].back() << " ";
         }
         r_s_out << "\n";
-        z += dz;
-
-        cout << "dz = " << dz << endl;
+        r_s_theta_out << "\n";
+        r_s_z_out << "\n";
     }
     return 0;
 }
