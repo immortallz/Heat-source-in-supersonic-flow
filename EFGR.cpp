@@ -176,6 +176,7 @@ double r_b(double z) {
 
 double r_b_z(double z){
     double dz = 1e-8;
+    return tan(PI / 12.0);
     return (r_b(z + dz) - r_b(z - dz)) / dz * 0.5;
 }
 
