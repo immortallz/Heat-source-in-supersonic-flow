@@ -12,9 +12,12 @@ int solver() {
 
     int
         N = 10, // xi
-        M = 8; // theta
+        M = 36; // theta
 
-    bool debug = true;
+    bool debug = false, progress_bar = true;
+    int num_step_percent = 100;
+    vector<bool> progress_flag(num_step_percent, false);
+
     double
         z0 = 1.5, z = z0, L = z0 + 1,
         r_b0, r_b_z0,
@@ -206,6 +209,14 @@ int solver() {
     // Главный цикл
     while(z < L){
         z_array.push_back(z);
+        if(progress_bar){
+            for(int s = 0; s < num_step_percent; s++){
+                if((z - z0) >= (s + 1)*(L - z0)/num_step_percent && !progress_flag[s]){
+                    std::cout << (s + 1)*100/num_step_percent << "% completed" << std::endl;
+                    progress_flag[s] = true;
+                }
+            }
+        }
         dz = 0.01; // Начальное приближение шага интегрирования по z
 
         // Вычисление шага dz. Спектральный метод устойчивости
@@ -682,6 +693,8 @@ int solver() {
         r_s_theta_out << "\n";
         r_s_z_out << "\n";
     }
+    if(progress_bar)
+        std::cout << "100% completed" << std::endl;
     return 0;
 }
 
