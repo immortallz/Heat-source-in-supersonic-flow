@@ -171,12 +171,12 @@ double r_from_xi(double xi, double r_s, double r_b)
 }
 
 double r_b(double z) {
-    return tan(PI / 12.0) * z;
+    // return tan(PI / 12.0) * z; // коническое тело
+    return tan(PI / 12.0) * sqrt(2*z - 1); // параболическое тело
 }
 
 double r_b_z(double z){
-    double dz = 1e-8;
-    return tan(PI / 12.0);
+    double dz = 1e-12;
     return (r_b(z + dz) - r_b(z - dz)) / dz * 0.5;
 }
 

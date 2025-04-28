@@ -1,4 +1,5 @@
 #include "r.h"
+#include <string>
 
 int solver() {
     ofstream rho_out("rho_out.txt");
@@ -19,7 +20,7 @@ int solver() {
     vector<bool> progress_flag(num_step_percent, false);
 
     double
-        z0 = 1.5, z = z0, L = z0 + 1,
+        z0 = 1.0, z = z0, L = z0 + 1,
         r_b0, r_b_z0,
         r_s0, r_s_z0,
         dxi = 1 / double(N - 1),
