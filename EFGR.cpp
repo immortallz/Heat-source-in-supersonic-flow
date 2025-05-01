@@ -165,13 +165,12 @@ R_array get_R(G_array G, double r, double q_val) {
     return result;
 }
 
-double r_from_xi(double xi, double r_s, double r_b)
-{
+double r_from_xi(double xi, double r_s, double r_b){
     return (r_s - r_b)*xi + r_b;
 }
 
 double r_b(double z) {
-    // return tan(PI / 12.0) * z; // коническое тело
+    return tan(PI / 12.0) * z; // коническое тело
     return tan(PI / 12.0) * sqrt(2*z - 1); // параболическое тело
 }
 
@@ -193,6 +192,10 @@ double xi_z(double xi, double r_s, double r_b, double r_s_z, double r_b_z) {
 }
 
 double q(double r, double theta, double z) {
+    double x_q = 0.3, y_q = 0, z_q = 1, L_q = 1.0;
+    double x = r * cos(theta), y = r * sin(theta);
+    if(z < 1.1) return 0;
+    return 1000000000 * exp(-((x - x_q)*(x - x_q) + (y - y_q)*(y - y_q) + (z - z_q)*(z - z_q)) / L_q/L_q);
     return 0;
 }
 

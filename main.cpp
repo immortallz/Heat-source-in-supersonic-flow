@@ -13,7 +13,7 @@ int solver() {
 
     int
         N = 10, // xi
-        M = 36; // theta
+        M = 18; // theta
 
     bool debug = false, progress_bar = true;
     int num_step_percent = 100;
@@ -106,7 +106,7 @@ int solver() {
 
         // Синхронизация мелкой сетки (задача о конусе) с крупной сеткой
         double phi = atan(r / z0);
-         // Ввиду обратного хода вычисления в задаче о конусе реверсивная индексация
+        // Ввиду обратного хода вычисления в задаче о конусе реверсивная индексация
         idx_phi = int(phi_cone.size()) - 1 - int((phi - phi0) / dphi);
         if(idx_phi < 0 || idx_phi >= int(phi_cone.size()))
             throw std::out_of_range("Индекс idx_phi = " + std::to_string(idx_phi) + " вне диапазона");
@@ -153,6 +153,9 @@ int solver() {
             }
         }
     }
+
+    // Подъемная сила, поворачивающий момент
+    double Fy = 0, Mz = 0;
 
     // Запись в файл
     rho_out << z << "\n";
@@ -383,7 +386,7 @@ int solver() {
                             r_s_theta[j].back() + dz/dth*(r_s_z_prev[j] - r_s_z_prev[j - 1])
                         );
                     }
-                    r_s_theta[0].back() = 0; r_s_theta[M - 1].back() = 0; // ВЫБРАТЬ: либо зануление, либо симметрия
+                    // r_s_theta[0].back() = 0; r_s_theta[M - 1].back() = 0; // ВЫБРАТЬ: либо зануление, либо симметрия
                     
                 }
                 else{ // corrector
@@ -402,7 +405,7 @@ int solver() {
                         if(debug)  // debug output
                             std::cout << "r_s_theta[M - 1] = " << r_s_theta[j].back() << endl;
                     }
-                    r_s_theta[0].back() = 0; r_s_theta[M - 1].back() = 0; // ВЫБРАТЬ: либо зануление, либо симметрия
+                    // r_s_theta[0].back() = 0; r_s_theta[M - 1].back() = 0; // ВЫБРАТЬ: либо зануление, либо симметрия
                 }
             }
             // Добавление шага dz только после предиктора,
@@ -489,11 +492,11 @@ int solver() {
                         + w_array[0][j]*w_array[0][j]
                     )
                 );
-                if(debug && j == 0) // debug output
+                if(true && j == 0) // debug output
                     std::cout << "\nABBET METHOD:\nV_n = " << V_n << "\nMach = " << Mach << "\ndelta_theta = " << delta_th << endl;
 
                 // Поправка давления
-                if(debug && j == 0) // debug output
+                if(true && j == 0) // debug output
                     std::cout << "old p = " << p_array[0][j] << " --> new p = " << p_array[0][j] * (1 - gamma*Mach*Mach*delta_th/sqrt(Mach*Mach - 1)+ gamma* Mach* ((gamma + 1)*Mach*Mach*Mach*Mach - 4*(Mach*Mach - 1))/ (4*(Mach*Mach - 1)*(Mach*Mach - 1))* delta_th * delta_th) << endl;
                 p_array[0][j] = p_array[0][j] * (
                     1 - gamma*Mach*Mach*delta_th/sqrt(Mach*Mach - 1)
@@ -505,10 +508,10 @@ int solver() {
                 );
 
                 //Поправка плотности
-                if(debug && j == 0) // debug output
+                if(true && j == 0) // debug output
                     std::cout << "old rho = " << rho_array[0][j] << " --> new rho = " << rho_inf * pow(p_array[0][j] / p_inf, 1/gamma) << endl;
                 rho_array[0][j] = rho_inf * pow(p_array[0][j] / p_inf, 1/gamma);
-    
+
                 // Полная энтальпия и модуль скорости из интеграла Бернулли
                 double H = gamma/(gamma - 1) * p_inf/rho_inf + 0.5*V_inf*V_inf;
                 double V_abs = sqrt(2*(H - gamma/(gamma - 1) * p_array[0][j]/rho_array[0][j]));
@@ -521,7 +524,7 @@ int solver() {
     
                 double V_tau_abs = sqrt(Vr_tau*Vr_tau + Vth_tau*Vth_tau + Vz_tau*Vz_tau);
                 //Поправка скорости
-                if(debug && j == 0){ // debug output
+                if(true && j == 0){ // debug output
                     std::cout << "old u = " << u_array[0][j] << " --> new u = " << Vr_tau * V_abs / V_tau_abs << endl;
                     std::cout << "old v = " << v_array[0][j] << " --> new v = " << Vth_tau * V_abs / V_tau_abs << endl;
                     std::cout << "old w = " << w_array[0][j] << " --> new w = " << Vz_tau * V_abs / V_tau_abs << endl;
@@ -529,6 +532,10 @@ int solver() {
                 u_array[0][j] = Vr_tau * V_abs / V_tau_abs;
                 v_array[0][j] = Vth_tau * V_abs / V_tau_abs;
                 w_array[0][j] = Vz_tau * V_abs / V_tau_abs;
+
+                // Подъемная сила, поворачивающий момент
+                Fy += -p_array[0][j] * cos(theta) * r_b(z) * dth * dz;
+                Mz += -z * p_array[0][j] * cos(theta) * r_b(z) * dth * dz;
             }
 
             // Метод Томаса (поправка на поверхности ударной волны)
@@ -696,6 +703,9 @@ int solver() {
     }
     if(progress_bar)
         std::cout << "100% completed" << std::endl;
+
+    std::cout << "\n=============================\nLifting force: " << Fy << std::endl;
+    std::cout << "Rotation momentum: " << Mz << std::endl;
     return 0;
 }
 
