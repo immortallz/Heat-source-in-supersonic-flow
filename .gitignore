@@ -6,3 +6,5 @@ Runge-Kutta/*.txt
 *.o
 *.exe
 123.nb
+.ipynb_checkpoints/
+cone17.f90

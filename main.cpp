@@ -10,6 +10,8 @@ int solver() {
     ofstream r_s_out("r_s_out.txt");
     ofstream r_s_theta_out("r_s_theta_out.txt");
     ofstream r_s_z_out("r_s_z_out.txt");
+    ofstream psi0_out("psi0_out.txt");
+    ofstream psi1_out("psi1_out.txt");
 
     int
         N = 10, // xi
@@ -45,6 +47,7 @@ int solver() {
         w_array(N, vector<double>(M));
 
     vector<vector<double>> r_s(M), r_s_theta(M), r_s_z(M);
+    vector<double> psi0(N, 0), psi1(N, 0);
 
     vector<double> phi_cone, rho_cone, p_cone, VR_cone, Vphi_cone; // Векторы для начальных данных
 
@@ -205,6 +208,31 @@ int solver() {
     r_s_out << "\n";
     r_s_theta_out << "\n";
     r_s_z_out << "\n";
+
+    // Интегрирование уравнения d(psi)/dr = rho*u*r
+    psi0[0] = 0;
+    for(int i = 1; i < N; i++){
+        xi = i * dxi;
+        r = r_from_xi(xi, r_s[0].back(), r_b(z));
+        double dr = r_from_xi(xi, r_s[0].back(), r_b(z)) - r_from_xi(xi - dxi, r_s[0].back(), r_b(z));
+        psi0[i] = psi0[i - 1] + rho_array[i][0] * u_array[i][0] * r * dr;
+    }
+    psi1[0] = 0;
+    for(int i = 1; i < N; i++){
+        xi = i * dxi;
+        r = r_from_xi(xi, r_s[M - 1].back(), r_b(z));
+        double dr = r_from_xi(xi, r_s[M - 1].back(), r_b(z)) - r_from_xi(xi - dxi, r_s[M - 1].back(), r_b(z));
+        psi1[i] = psi1[i - 1] + rho_array[i][M - 1] * u_array[i][M - 1] * r * dr;
+    }
+
+    psi0_out << z << "\n";
+    psi1_out << z << "\n";
+    for(int i = 0; i < N; i++){
+        psi0_out << psi0[i] << " ";
+        psi1_out << psi1[i] << " ";
+    }
+    psi0_out << "\n";
+    psi1_out << "\n";
 
     double dz, CFL = 0.9, lambda_xi, lambda_th;
     double MM, mm, xi_z_val, xi_r_val, xi_theta_val;
@@ -492,11 +520,11 @@ int solver() {
                         + w_array[0][j]*w_array[0][j]
                     )
                 );
-                if(true && j == 0) // debug output
+                if(debug && j == 0) // debug output
                     std::cout << "\nABBET METHOD:\nV_n = " << V_n << "\nMach = " << Mach << "\ndelta_theta = " << delta_th << endl;
 
                 // Поправка давления
-                if(true && j == 0) // debug output
+                if(debug && j == 0) // debug output
                     std::cout << "old p = " << p_array[0][j] << " --> new p = " << p_array[0][j] * (1 - gamma*Mach*Mach*delta_th/sqrt(Mach*Mach - 1)+ gamma* Mach* ((gamma + 1)*Mach*Mach*Mach*Mach - 4*(Mach*Mach - 1))/ (4*(Mach*Mach - 1)*(Mach*Mach - 1))* delta_th * delta_th) << endl;
                 p_array[0][j] = p_array[0][j] * (
                     1 - gamma*Mach*Mach*delta_th/sqrt(Mach*Mach - 1)
@@ -508,7 +536,7 @@ int solver() {
                 );
 
                 //Поправка плотности
-                if(true && j == 0) // debug output
+                if(debug && j == 0) // debug output
                     std::cout << "old rho = " << rho_array[0][j] << " --> new rho = " << rho_inf * pow(p_array[0][j] / p_inf, 1/gamma) << endl;
                 rho_array[0][j] = rho_inf * pow(p_array[0][j] / p_inf, 1/gamma);
 
@@ -524,7 +552,7 @@ int solver() {
     
                 double V_tau_abs = sqrt(Vr_tau*Vr_tau + Vth_tau*Vth_tau + Vz_tau*Vz_tau);
                 //Поправка скорости
-                if(true && j == 0){ // debug output
+                if(debug && j == 0){ // debug output
                     std::cout << "old u = " << u_array[0][j] << " --> new u = " << Vr_tau * V_abs / V_tau_abs << endl;
                     std::cout << "old v = " << v_array[0][j] << " --> new v = " << Vth_tau * V_abs / V_tau_abs << endl;
                     std::cout << "old w = " << w_array[0][j] << " --> new w = " << Vz_tau * V_abs / V_tau_abs << endl;
@@ -599,6 +627,34 @@ int solver() {
                 u_array[N - 1][j] = V_inf_tau_x + V_n*nx;
                 v_array[N - 1][j] = V_inf_tau_y + V_n*ny;
                 w_array[N - 1][j] = V_inf_tau_z + V_n*nz;
+            }
+
+            // Функция тока в сечении theta = 0 (psi0) и theta = 1 (psi1)
+            if(step == 1){
+                // Интегрирование уравнения d(psi)/dr = rho*u*r
+                psi0[0] = 0;
+                for(int i = 1; i < N; i++){
+                    xi = i * dxi;
+                    r = r_from_xi(xi, r_s[0].back(), r_b(z));
+                    double dr = r_from_xi(xi, r_s[0].back(), r_b(z)) - r_from_xi(xi - dxi, r_s[0].back(), r_b(z));
+                    psi0[i] = psi0[i - 1] + rho_array[i][0] * u_array[i][0] * r * dr;
+                }
+                psi1[0] = 0;
+                for(int i = 1; i < N; i++){
+                    xi = i * dxi;
+                    r = r_from_xi(xi, r_s[M - 1].back(), r_b(z));
+                    double dr = r_from_xi(xi, r_s[M - 1].back(), r_b(z)) - r_from_xi(xi - dxi, r_s[M - 1].back(), r_b(z));
+                    psi1[i] = psi1[i - 1] + rho_array[i][M - 1] * u_array[i][M - 1] * r * dr;
+                }
+
+                psi0_out << z << "\n";
+                psi1_out << z << "\n";
+                for(int i = 0; i < N; i++){
+                    psi0_out << psi0[i] << " ";
+                    psi1_out << psi1[i] << " ";
+                }
+                psi0_out << "\n";
+                psi1_out << "\n";
             }
     
             //Поправка векторов E, F, G, R на границах
