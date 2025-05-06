@@ -1,9 +1,11 @@
+#pragma once
 #include <array>
 #include <initializer_list>
 #include <cmath>
 #include <vector>
 #include <iostream>
 #include <fstream>
+#include <omp.h>
 
 #define gamma 1.4
 #define PI 3.141592653589793

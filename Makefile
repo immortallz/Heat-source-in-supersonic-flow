@@ -1,5 +1,5 @@
 CXX = g++
-CXXFLAGS = -std=c++11 -Wall -O2
+CXXFLAGS = -std=c++11 -fopenmp -Wall -O2
 
 OBJS = BaseArray.o EFGR.o main.o
 

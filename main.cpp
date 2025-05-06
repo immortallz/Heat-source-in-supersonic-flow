@@ -1,7 +1,9 @@
 #include "r.h"
 #include <string>
+#include <ctime>
 
 int solver() {
+    ofstream z_out("z_out.txt");
     ofstream rho_out("rho_out.txt");
     ofstream p_out("p_out.txt");
     ofstream u_out("u_out.txt");
@@ -14,8 +16,8 @@ int solver() {
     ofstream psi1_out("psi1_out.txt");
 
     int
-        N = 10, // xi
-        M = 18; // theta
+        N = 100, // xi
+        M = 300; // theta
 
     bool debug = false, progress_bar = true;
     int num_step_percent = 100;
@@ -99,7 +101,8 @@ int solver() {
     }
 
     double r, xi, theta;
-
+    double seconds;
+    clock_t start_initial = clock();
     // Инициализация начального слоя
     for(int i = 0; i < N; i++)
     {
@@ -156,16 +159,21 @@ int solver() {
             }
         }
     }
+    clock_t finish_initial = clock();
+    seconds = double(finish_initial - start_initial) / CLOCKS_PER_SEC;
+    // std::cout << "Elapsed time (initial layer): " << seconds << "s" << std::endl;
 
     // Подъемная сила, поворачивающий момент
     double Fy = 0, Mz = 0;
 
     // Запись в файл
-    rho_out << z << "\n";
-    p_out << z << "\n";
-    u_out << z << "\n";
-    v_out << z << "\n";
-    w_out << z << "\n";
+    z_out << z << " ";
+    // rho_out << z << "\n";
+    // p_out << z << "\n";
+    // u_out << z << "\n";
+    // v_out << z << "\n";
+    // w_out << z << "\n";
+    #pragma omp parallel for private(xi, r, theta)
     for(int i = 0; i < N; i++){
         xi = i * dxi;
         r = r_from_xi(xi, r_s0, r_b0);
@@ -177,7 +185,11 @@ int solver() {
             u_array[i][j] = G_prev[i][j].get_u();
             v_array[i][j] = G_prev[i][j].get_v();
             w_array[i][j] = G_prev[i][j].get_w();
-
+        }
+    }
+    // Запись в файлы
+    for(int i = 0; i < N; i++){
+        for(int j = 0; j < M; j++){
             rho_out << rho_array[i][j] << " ";
             p_out << p_array[i][j] << " ";
             u_out << u_array[i][j] << " ";
@@ -190,16 +202,15 @@ int solver() {
         v_out << "\n";
         w_out << "\n";
     }
-    
-    rho_out << "\n";
-    p_out << "\n";
-    u_out << "\n";
-    v_out << "\n";
-    w_out << "\n";
+    // rho_out << "\n";
+    // p_out << "\n";
+    // u_out << "\n";
+    // v_out << "\n";
+    // w_out << "\n";
 
-    r_s_out << z << " ";
-    r_s_theta_out << z << " ";
-    r_s_z_out << z << " ";
+    // r_s_out << z << " ";
+    // r_s_theta_out << z << " ";
+    // r_s_z_out << z << " ";
     for(int j = 0; j < M; j++){
         r_s_out << r_s0 << " ";
         r_s_theta_out << 0 << " ";
@@ -225,8 +236,8 @@ int solver() {
         psi1[i] = psi1[i - 1] + rho_array[i][M - 1] * u_array[i][M - 1] * r * dr;
     }
 
-    psi0_out << z << "\n";
-    psi1_out << z << "\n";
+    // psi0_out << z << "\n";
+    // psi1_out << z << "\n";
     for(int i = 0; i < N; i++){
         psi0_out << psi0[i] << " ";
         psi1_out << psi1[i] << " ";
@@ -239,12 +250,13 @@ int solver() {
     vector<double> z_array;
 
     // Главный цикл
+    clock_t start = clock();
     while(z < L){
         z_array.push_back(z);
         if(progress_bar){
             for(int s = 0; s < num_step_percent; s++){
-                if((z - z0) >= (s + 1)*(L - z0)/num_step_percent && !progress_flag[s]){
-                    std::cout << (s + 1)*100/num_step_percent << "% completed" << std::endl;
+                if((z - z0) >= (s + 1)*(L - z0)/double(num_step_percent) && !progress_flag[s]){
+                    std::cout << (s + 1)*100/double(num_step_percent) << "% completed" << std::endl;
                     progress_flag[s] = true;
                 }
             }
@@ -252,6 +264,7 @@ int solver() {
         dz = 0.01; // Начальное приближение шага интегрирования по z
 
         // Вычисление шага dz. Спектральный метод устойчивости
+        #pragma omp parallel for reduction(min: dz) private(xi, r, xi_r_val, xi_theta_val, xi_z_val, MM, mm, lambda_xi, lambda_th)
         for(int i = 0; i < N; i++){
             xi = i * dxi;
             for(int j = 0; j < M; j++){
@@ -301,6 +314,7 @@ int solver() {
         vector<double> r_s_pred(M), r_s_theta_pred(M), r_s_z_prev(M);
         int idx;
         for(int step = 0; step < 2; step++){ // step = 0: predictor, step = 1: corrector
+            #pragma omp parallel for private(xi, theta, idx)
             for(int i = 0; i < N; i++){
                 xi = i * dxi;
                 // Граница theta = 0
@@ -444,6 +458,7 @@ int solver() {
                 std::cout << "dz = " << dz << endl;
 
             // Восстановление векторов E, F, R и физических величин
+            #pragma omp parallel for private(xi, theta, r)
             for(int i = 0; i < N; i++){
                 xi = i * dxi;
                 // Граница theta = 0
@@ -647,8 +662,8 @@ int solver() {
                     psi1[i] = psi1[i - 1] + rho_array[i][M - 1] * u_array[i][M - 1] * r * dr;
                 }
 
-                psi0_out << z << "\n";
-                psi1_out << z << "\n";
+                // psi0_out << z << "\n";
+                // psi1_out << z << "\n";
                 for(int i = 0; i < N; i++){
                     psi0_out << psi0[i] << " ";
                     psi1_out << psi1[i] << " ";
@@ -687,6 +702,7 @@ int solver() {
                 }
             }
             // Нормализация
+            #pragma omp parallel for private(xi, theta, r)
             for(int i = 0; i < N; i++){
                 xi = i * dxi;
                 for(int j = 0; j < M; j++){
@@ -718,11 +734,12 @@ int solver() {
         }
 
         // Запись в файл
-        rho_out << z << "\n";
-        p_out << z << "\n";
-        u_out << z << "\n";
-        v_out << z << "\n";
-        w_out << z << "\n";
+        z_out << z << " ";
+        // rho_out << z << "\n";
+        // p_out << z << "\n";
+        // u_out << z << "\n";
+        // v_out << z << "\n";
+        // w_out << z << "\n";
         for(int i = 0; i < N; i++)
         {
             for(int j = 0; j < M; j++)
@@ -739,15 +756,15 @@ int solver() {
             v_out << "\n";
             w_out << "\n";
         }
-        rho_out << "\n";
-        p_out << "\n";
-        u_out << "\n";
-        v_out << "\n";
-        w_out << "\n";
+        // rho_out << "\n";
+        // p_out << "\n";
+        // u_out << "\n";
+        // v_out << "\n";
+        // w_out << "\n";
 
-        r_s_out << z << " ";
-        r_s_theta_out << z << " ";
-        r_s_z_out << z << " ";
+        // r_s_out << z << " ";
+        // r_s_theta_out << z << " ";
+        // r_s_z_out << z << " ";
         for(int j = 0; j < M; j++){
             r_s_out << r_s[j].back() << " ";
             r_s_theta_out << r_s_theta[j].back() << " ";
@@ -759,9 +776,13 @@ int solver() {
     }
     if(progress_bar)
         std::cout << "100% completed" << std::endl;
-
+    
     std::cout << "\n=============================\nLifting force: " << Fy << std::endl;
     std::cout << "Rotation momentum: " << Mz << std::endl;
+
+    clock_t finish = clock();
+    seconds = double(finish - start) / CLOCKS_PER_SEC;
+    std::cout << "Elapsed time (main loop): " << seconds << "s" << std::endl;
     return 0;
 }
 
@@ -846,7 +867,11 @@ void test()
 
 int main()
 {
+    clock_t start = clock();
     solver();
+    clock_t finish = clock();
+    double seconds = double(finish - start) / CLOCKS_PER_SEC;
+    std::cout << "Elapsed time: " << seconds << "s" << std::endl;
     // test();
 
     return 0;

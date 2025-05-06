@@ -172,6 +172,7 @@ double r_from_xi(double xi, double r_s, double r_b){
 double r_b(double z) {
     // return tan(PI / 12.0) * z; // коническое тело
     return tan(PI / 12.0) * sqrt(2*z - 1); // параболическое тело
+    // return tan(PI / 12.0); // усеченный конус (конус + цилиндр)
 }
 
 double r_b_z(double z){
