@@ -86,9 +86,9 @@ vector<double> RK(double t0, double T, double h, vector<double> y0, string filen
 
 	for(int i = 0; i < N; i++)
 	{
-		fprintf(file, "%lf", t0 + i*h);
+		fprintf(file, "%.14lf", t0 + i*h);
 		for(double elem : y)
-			fprintf(file, " %lf", elem);
+			fprintf(file, " %.14lf", elem);
 		fprintf(file, "\n");
 
 		for(int j = 1; j <= s; j++)
@@ -111,9 +111,9 @@ vector<double> RK(double t0, double T, double h, vector<double> y0, string filen
 				y[r] += h*b[j]*k[j][r];
 	}
 
-	fprintf(file, "%lf", t0 + N*h);
+	fprintf(file, "%.14lf", t0 + N*h);
 	for(double elem : y)
-		fprintf(file, " %lf", elem);
+		fprintf(file, " %.14lf", elem);
 	fprintf(file, "\n");
 
 	if(abs(T - t0 - N*h) > 1e-15){
@@ -134,9 +134,9 @@ vector<double> RK(double t0, double T, double h, vector<double> y0, string filen
 			for(int r = 0; r < dim; r++)
 				y[r] += (T - t0 - N*h)*b[j]*k[j][r];
 
-		fprintf(file, "%lf", T);
+		fprintf(file, "%.14lf", T);
 		for(double elem : y)
-			fprintf(file, " %lf", elem);
+			fprintf(file, " %.14lf", elem);
 		fprintf(file, "\n");
 	}
 	fclose(file);

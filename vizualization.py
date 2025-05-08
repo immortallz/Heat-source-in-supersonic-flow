@@ -23,22 +23,35 @@ def load_field(filename):
 
 # --- Body radius function
 def r_b(z):
-    return np.tan(np.pi/12) * z
+    # return np.tan(np.pi / 12.0) * z; # коническое тело
+    return np.tan(np.pi / 12.0) * np.sqrt(2*z - 1); # параболическое тело
+    return np.tan(np.pi / 12.0) * (z / 20.0 + 0.95); # усеченный конус (конус + цилиндр)
 
 # --- Load all fields
-zs, rho = load_field('rho_out.txt')
-_,   p   = load_field('p_out.txt')
-_,   u   = load_field('u_out.txt')
-_,   v   = load_field('v_out.txt')
-_,   w   = load_field('w_out.txt')
+# zs, rho = load_field('rho_out.txt')
+# _,   p   = load_field('p_out.txt')
+# _,   u   = load_field('u_out.txt')
+# _,   v   = load_field('v_out.txt')
+# _,   w   = load_field('w_out.txt')
 
-# --- Load shock radius rs(z, theta)
-rs = []
-with open('r_s_out.txt') as f:
-    for line in f:
-        parts = list(map(float, line.split()))
-        rs.append(parts[1:])
-rs = np.array(rs)  # shape (K, M)
+# # --- Load shock radius rs(z, theta)
+# rs = []
+# with open('r_s_out.txt') as f:
+#     for line in f:
+#         parts = list(map(float, line.split()))
+#         rs.append(parts[1:])
+# rs = np.array(rs)  # shape (K, M)
+
+zs = np.loadtxt('z_out.txt')
+K = zs.shape[0]
+N = 200
+M = 600
+rho = np.loadtxt('rho_out.txt').reshape(K, N, M)
+p = np.loadtxt('p_out.txt').reshape(K, N, M)
+u = np.loadtxt('u_out.txt').reshape(K, N, M)
+v = np.loadtxt('v_out.txt').reshape(K, N, M)
+w = np.loadtxt('w_out.txt').reshape(K, N, M)
+rs = np.loadtxt('r_s_out.txt')
 
 # --- Dimensions and normalized xi-grid
 K, N, M = rho.shape
@@ -113,7 +126,7 @@ def prepare_cross_section(z_idx, field, var):
     xi_m, phi_m = np.meshgrid(xi, phi_full, indexing='ij')
     r = rb + xi_m * (rs_full[np.newaxis,:] - rb)
     # rotate zero angle to top: θ=0 maps to φ=π/2
-    phi_rot = phi_m - np.pi/2
+    phi_rot = np.pi/2 - phi_m
     x = r * np.cos(phi_rot)
     y = r * np.sin(phi_rot)
     # reflect field
@@ -125,7 +138,7 @@ def prepare_cross_section(z_idx, field, var):
 fig, ax = plt.subplots(figsize=(7,7))
 plt.subplots_adjust(bottom=0.25)
 x0, y0, d0 = prepare_cross_section(0, field, var)
-cax = ax.pcolormesh(x0, y0, d0, shading='auto', cmap='viridis')
+cax = ax.pcolormesh(x0, y0, d0, shading='auto', cmap='plasma')
 cbar = plt.colorbar(cax, ax=ax, label=var)
 ax.set_aspect('equal'); ax.set_title(f'z={zs[0]:.3f}')
 ax.set_xlabel('x'); ax.set_ylabel('y')
@@ -140,6 +153,7 @@ def upd(val):
     ax.set_title(f'z={zs[i]:.3f}')
     fig.canvas.draw_idle()
 sl.on_changed(upd)
+plt.tight_layout()
 plt.show()
 
 # --- Animation fixed colorbar

@@ -54,8 +54,8 @@ int main()
     while (input >> theta >> VR >> Vtheta) {
     	rho = pow((gamma-1)/gamma/C_entr*(C - 0.5*(VR*VR + Vtheta*Vtheta)), 1/(gamma-1));
     	p = C_entr * pow(rho, gamma);
-    	fprintf(f_rho, "%lf %lf\n", theta, rho);
-    	fprintf(f_p, "%lf %lf\n", theta, p);
+    	fprintf(f_rho, "%.14lf %.14lf\n", theta, rho);
+    	fprintf(f_p, "%.14lf %.14lf\n", theta, p);
     }
 	cout << "Density and pressure on body surface: rho = " << rho << ", p = " << p << endl;
 

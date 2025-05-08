@@ -3,28 +3,37 @@
 #include <ctime>
 
 int solver() {
-    ofstream z_out("z_out.txt");
-    ofstream rho_out("rho_out.txt");
-    ofstream p_out("p_out.txt");
-    ofstream u_out("u_out.txt");
-    ofstream v_out("v_out.txt");
-    ofstream w_out("w_out.txt");
-    ofstream r_s_out("r_s_out.txt");
-    ofstream r_s_theta_out("r_s_theta_out.txt");
-    ofstream r_s_z_out("r_s_z_out.txt");
-    ofstream psi0_out("psi0_out.txt");
-    ofstream psi1_out("psi1_out.txt");
-
+    ofstream
+        z_out("z_out.txt"),
+        rho_out("rho_out.txt"),
+        p_out("p_out.txt"),
+        u_out("u_out.txt"),
+        v_out("v_out.txt"),
+        w_out("w_out.txt"),
+        r_s_out("r_s_out.txt"),
+        r_s_theta_out("r_s_theta_out.txt"),
+        r_s_z_out("r_s_z_out.txt"),
+        psi0_out("psi0_out.txt"),
+        psi1_out("psi1_out.txt");
+    
+    // std::ofstream rho_bin("rho.bin", std::ios::out | std::ios::binary);
+    // std::ofstream p_bin("p.bin", std::ios::out | std::ios::binary);
+    // std::ofstream u_bin("u.bin", std::ios::out | std::ios::binary);
+    // std::ofstream v_bin("v.bin", std::ios::out | std::ios::binary);
+    // std::ofstream w_bin("w.bin", std::ios::out | std::ios::binary);
+    
     int
-        N = 100, // xi
-        M = 300; // theta
+        N = 500, // xi
+        M = 1500; // theta
 
     bool debug = false, progress_bar = true;
-    int num_step_percent = 100;
+    int num_step_percent = 1000;
     vector<bool> progress_flag(num_step_percent, false);
+    vector<bool> z_100(false);
+    int k = 1, z_count = 100; // сколько файлов вывести (по z)
 
     double
-        z0 = 1.0, z = z0, L = z0 + 1,
+        z0 = 1.0, z = z0, L = z0 + 1.0,
         r_b0, r_b_z0,
         r_s0, r_s_z0,
         dxi = 1 / double(N - 1),
@@ -202,6 +211,15 @@ int solver() {
         v_out << "\n";
         w_out << "\n";
     }
+    
+    // for(int i = 0; i < N; ++i) {
+    //     // data() возвращает double*, contiguous region of M elements
+    //     rho_bin.write(
+    //       reinterpret_cast<const char*>(rho_array[i].data()),
+    //       sizeof(double) * M
+    //     );
+    // }
+
     // rho_out << "\n";
     // p_out << "\n";
     // u_out << "\n";
@@ -220,20 +238,20 @@ int solver() {
     r_s_theta_out << "\n";
     r_s_z_out << "\n";
 
-    // Интегрирование уравнения d(psi)/dr = rho*u*r
+    // Интегрирование уравнения d(psi)/dr = rho*w*r
     psi0[0] = 0;
     for(int i = 1; i < N; i++){
         xi = i * dxi;
         r = r_from_xi(xi, r_s[0].back(), r_b(z));
         double dr = r_from_xi(xi, r_s[0].back(), r_b(z)) - r_from_xi(xi - dxi, r_s[0].back(), r_b(z));
-        psi0[i] = psi0[i - 1] + rho_array[i][0] * u_array[i][0] * r * dr;
+        psi0[i] = psi0[i - 1] + rho_array[i][0] * w_array[i][0] * r * dr;
     }
     psi1[0] = 0;
     for(int i = 1; i < N; i++){
         xi = i * dxi;
         r = r_from_xi(xi, r_s[M - 1].back(), r_b(z));
         double dr = r_from_xi(xi, r_s[M - 1].back(), r_b(z)) - r_from_xi(xi - dxi, r_s[M - 1].back(), r_b(z));
-        psi1[i] = psi1[i - 1] + rho_array[i][M - 1] * u_array[i][M - 1] * r * dr;
+        psi1[i] = psi1[i - 1] + rho_array[i][M - 1] * w_array[i][M - 1] * r * dr;
     }
 
     // psi0_out << z << "\n";
@@ -646,30 +664,32 @@ int solver() {
 
             // Функция тока в сечении theta = 0 (psi0) и theta = 1 (psi1)
             if(step == 1){
-                // Интегрирование уравнения d(psi)/dr = rho*u*r
+                // Интегрирование уравнения d(psi)/dr = rho*w*r
                 psi0[0] = 0;
                 for(int i = 1; i < N; i++){
                     xi = i * dxi;
                     r = r_from_xi(xi, r_s[0].back(), r_b(z));
                     double dr = r_from_xi(xi, r_s[0].back(), r_b(z)) - r_from_xi(xi - dxi, r_s[0].back(), r_b(z));
-                    psi0[i] = psi0[i - 1] + rho_array[i][0] * u_array[i][0] * r * dr;
+                    psi0[i] = psi0[i - 1] + rho_array[i][0] * w_array[i][0] * r * dr;
                 }
                 psi1[0] = 0;
                 for(int i = 1; i < N; i++){
                     xi = i * dxi;
                     r = r_from_xi(xi, r_s[M - 1].back(), r_b(z));
                     double dr = r_from_xi(xi, r_s[M - 1].back(), r_b(z)) - r_from_xi(xi - dxi, r_s[M - 1].back(), r_b(z));
-                    psi1[i] = psi1[i - 1] + rho_array[i][M - 1] * u_array[i][M - 1] * r * dr;
+                    psi1[i] = psi1[i - 1] + rho_array[i][M - 1] * w_array[i][M - 1] * r * dr;
                 }
 
                 // psi0_out << z << "\n";
                 // psi1_out << z << "\n";
-                for(int i = 0; i < N; i++){
-                    psi0_out << psi0[i] << " ";
-                    psi1_out << psi1[i] << " ";
+                if(z > z0 + double(k)/double(z_count)){
+                    for(int i = 0; i < N; i++){
+                        psi0_out << psi0[i] << " ";
+                        psi1_out << psi1[i] << " ";
+                    }
+                    psi0_out << "\n";
+                    psi1_out << "\n";
                 }
-                psi0_out << "\n";
-                psi1_out << "\n";
             }
     
             //Поправка векторов E, F, G, R на границах
@@ -734,28 +754,39 @@ int solver() {
         }
 
         // Запись в файл
-        z_out << z << " ";
         // rho_out << z << "\n";
         // p_out << z << "\n";
         // u_out << z << "\n";
         // v_out << z << "\n";
         // w_out << z << "\n";
-        for(int i = 0; i < N; i++)
-        {
-            for(int j = 0; j < M; j++)
-            {
-                rho_out << rho_array[i][j] << " ";
-                p_out << p_array[i][j] << " ";
-                u_out << u_array[i][j] << " ";
-                v_out << v_array[i][j] << " ";
-                w_out << w_array[i][j] << " ";
+        if(z > z0 + double(k)/double(z_count)){
+            z_out << z << " ";
+            std::cout << z << std::endl;
+            for(int i = 0; i < N; i++){
+                for(int j = 0; j < M; j++)
+                {
+                    rho_out << rho_array[i][j] << " ";
+                    p_out << p_array[i][j] << " ";
+                    u_out << u_array[i][j] << " ";
+                    v_out << v_array[i][j] << " ";
+                    w_out << w_array[i][j] << " ";
+                }
+                rho_out << "\n";
+                p_out << "\n";
+                u_out << "\n";
+                v_out << "\n";
+                w_out << "\n";
             }
-            rho_out << "\n";
-            p_out << "\n";
-            u_out << "\n";
-            v_out << "\n";
-            w_out << "\n";
         }
+            
+        // for(int i = 0; i < N; ++i) {
+        //     // data() возвращает double*, contiguous region of M elements
+        //     rho_bin.write(
+        //     reinterpret_cast<const char*>(rho_array[i].data()),
+        //     sizeof(double) * M
+        //     );
+        // }
+
         // rho_out << "\n";
         // p_out << "\n";
         // u_out << "\n";
@@ -765,14 +796,17 @@ int solver() {
         // r_s_out << z << " ";
         // r_s_theta_out << z << " ";
         // r_s_z_out << z << " ";
-        for(int j = 0; j < M; j++){
-            r_s_out << r_s[j].back() << " ";
-            r_s_theta_out << r_s_theta[j].back() << " ";
-            r_s_z_out << r_s_z[j].back() << " ";
+        if(z > z0 + double(k)/double(z_count)){
+            for(int j = 0; j < M; j++){
+                r_s_out << r_s[j].back() << " ";
+                r_s_theta_out << r_s_theta[j].back() << " ";
+                r_s_z_out << r_s_z[j].back() << " ";
+            }
+            r_s_out << "\n";
+            r_s_theta_out << "\n";
+            r_s_z_out << "\n";
+            k++;
         }
-        r_s_out << "\n";
-        r_s_theta_out << "\n";
-        r_s_z_out << "\n";
     }
     if(progress_bar)
         std::cout << "100% completed" << std::endl;
