@@ -13,7 +13,9 @@ def load_field(filename):
         if not lines[i].strip():
             i += 1
             continue
-        z = float(lines[i].strip()); zs.append(z); i += 1
+        z = float(lines[i].strip())
+        zs.append(z)
+        i += 1
         block = []
         while i < len(lines) and lines[i].strip():
             block.append(list(map(float, lines[i].split())))
@@ -23,9 +25,9 @@ def load_field(filename):
 
 # --- Body radius function
 def r_b(z):
-    # return np.tan(np.pi / 12.0) * z; # коническое тело
-    return np.tan(np.pi / 12.0) * np.sqrt(2*z - 1); # параболическое тело
-    return np.tan(np.pi / 12.0) * (z / 20.0 + 0.95); # усеченный конус (конус + цилиндр)
+    # return np.tan(np.pi / 12.0) * z # коническое тело
+    return np.tan(np.pi / 12.0) * np.sqrt(2*z - 1) # параболическое тело
+    return np.tan(np.pi / 12.0) * (z / 20.0 + 0.95) # усеченный конус (конус + цилиндр)
 
 # --- Load all fields
 # zs, rho = load_field('rho_out.txt')
@@ -81,25 +83,30 @@ fig, axs = plt.subplots(2,2, figsize=(12,8))
 # xi-z, theta=0
 pcm = axs[0,0].pcolormesh(xi, zs, field0, shading='auto', cmap='viridis')
 axs[0,0].set_title(f"{var} (θ=0) в ξ–z")
-axs[0,0].set_xlabel('ξ'); axs[0,0].set_ylabel('z')
+axs[0,0].set_xlabel('ξ')
+axs[0,0].set_ylabel('z')
 fig.colorbar(pcm, ax=axs[0,0])
 # r-z, theta=0
 Zg = np.tile(zs[:,None], (1,N))
 pcm = axs[0,1].pcolormesh(r_phys0, Zg, field0, shading='auto', cmap='viridis')
 axs[0,1].set_title(f"{var} (θ=0) в r–z")
-axs[0,1].set_xlabel('r'); axs[0,1].set_ylabel('z')
+axs[0,1].set_xlabel('r')
+axs[0,1].set_ylabel('z')
 fig.colorbar(pcm, ax=axs[0,1])
 # xi-z, theta=pi
 pcm = axs[1,0].pcolormesh(xi, zs, fieldp, shading='auto', cmap='viridis')
 axs[1,0].set_title(f"{var} (θ=π) в ξ–z")
-axs[1,0].set_xlabel('ξ'); axs[1,0].set_ylabel('z')
+axs[1,0].set_xlabel('ξ')
+axs[1,0].set_ylabel('z')
 fig.colorbar(pcm, ax=axs[1,0])
 # r-z, theta=pi
 pcm = axs[1,1].pcolormesh(r_physp, Zg, fieldp, shading='auto', cmap='viridis')
 axs[1,1].set_title(f"{var} (θ=π) в r–z")
-axs[1,1].set_xlabel('r'); axs[1,1].set_ylabel('z')
+axs[1,1].set_xlabel('r')
+axs[1,1].set_ylabel('z')
 fig.colorbar(pcm, ax=axs[1,1])
-plt.tight_layout(); plt.show()
+plt.tight_layout()
+plt.show()
 
 # --- Reflect half-circle data into full [0,2π]
 def make_full_circle(data_half, is_odd):
@@ -120,7 +127,8 @@ def prepare_cross_section(z_idx, field, var):
     # full φ from 0 to 2π without duplicate endpoints
     phi_full = np.hstack([phi[1:-1] + np.pi, phi])
     # compute r mesh
-    z = zs[z_idx]; rb = r_b(z)
+    z = zs[z_idx]
+    rb = r_b(z)
     rsz = rs[z_idx]
     rs_full = np.hstack([rsz[1:-1], rsz])
     xi_m, phi_m = np.meshgrid(xi, phi_full, indexing='ij')
@@ -140,9 +148,12 @@ plt.subplots_adjust(bottom=0.25)
 x0, y0, d0 = prepare_cross_section(0, field, var)
 cax = ax.pcolormesh(x0, y0, d0, shading='auto', cmap='plasma')
 cbar = plt.colorbar(cax, ax=ax, label=var)
-ax.set_aspect('equal'); ax.set_title(f'z={zs[0]:.3f}')
-ax.set_xlabel('x'); ax.set_ylabel('y')
-ax.axhline(0, color='k', linewidth=0.5); ax.axvline(0, color='k', linewidth=0.5)
+ax.set_aspect('equal')
+ax.set_title(f'z={zs[0]:.3f}')
+ax.set_xlabel('x')
+ax.set_ylabel('y')
+ax.axhline(0, color='k', linewidth=0.5)
+ax.axvline(0, color='k', linewidth=0.5)
 # slider
 axsl = plt.axes([0.25,0.1,0.65,0.03])
 sl = Slider(axsl, 'Z idx', 0, K-1, valinit=0, valstep=1)
@@ -165,7 +176,9 @@ plt.colorbar(cax, ax=ax, label=var)
 ax.set_aspect('equal')
 def anim(i):
     x,y,dd = prepare_cross_section(i, field, var)
-    cax.set_array(dd.ravel()); ax.set_title(f'z={zs[i]:.3f}'); return cax,
+    cax.set_array(dd.ravel())
+    ax.set_title(f'z={zs[i]:.3f}')
+    return cax,
 ani = FuncAnimation(fig, anim, frames=K, interval=100, blit=False)
 plt.show()
 
@@ -179,6 +192,9 @@ ax.set_aspect('equal')
 def animn(i):
     x,y,dd = prepare_cross_section(i, field, var)
     dnn = (dd-dd.min())/(dd.max()-dd.min() if dd.max()!=dd.min() else 1)
-    caxn.set_array(dnn.ravel()); ax.set_title(f'z={zs[i]:.3f}'); return caxn,
+    caxn.set_array(dnn.ravel())
+    ax.set_title(f'z={zs[i]:.3f}')
+    return caxn,
 ani2 = FuncAnimation(fig, animn, frames=K, interval=100, blit=False)
-plt.tight_layout(); plt.show()
+plt.tight_layout()
+plt.show()
