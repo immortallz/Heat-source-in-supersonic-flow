@@ -48,7 +48,7 @@ def main():
     plt.subplots_adjust(bottom=0.25)
     x,y,d = prepare(zs,rs,xi,0, field, var)
     pcm = ax.pcolormesh(x,y,d, shading='auto', cmap='viridis')
-    # cbar = fig.colorbar(pcm, ax=ax, label=var)
+    fig.colorbar(pcm, ax=ax, label=var)
     ax.set_aspect('equal')
     ax.set_xlabel('x')
     ax.set_ylabel('y')
