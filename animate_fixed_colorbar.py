@@ -1,13 +1,13 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.animation import FuncAnimation
+from matplotlib.animation import FuncAnimation, PillowWriter
 
 # --- Общие
 def r_b(z): return np.tan(np.pi/12) * np.sqrt(2*z - 1)
 def load_all():
     zs = np.loadtxt('z_out.txt')
     K=zs.size
-    N,M=200,600
+    N,M=500,1500
     rho = np.loadtxt('rho_out.txt').reshape(K,N,M)
     p,u,v,w = [np.loadtxt(f).reshape(K,N,M) for f in 
         ('p_out.txt','u_out.txt','v_out.txt','w_out.txt')]
@@ -44,12 +44,12 @@ def main():
     xi=np.linspace(0,1,N)
 
     # фикс колорбар
-    vmin=np.nanmin(field)
-    vmax=np.nanmax(field)
+    # vmin=np.nanmin(field)
+    # vmax=np.nanmax(field)
 
     fig, ax = plt.subplots(figsize=(7,7))
     x,y,d = prepare(zs,rs,xi,0,field,var)
-    pcm = ax.pcolormesh(x,y,d,shading='auto',cmap='viridis',vmin=vmin,vmax=vmax)
+    pcm = ax.pcolormesh(x,y,d,shading='auto',cmap='viridis',vmin=1.6,vmax=2.1)
     plt.colorbar(pcm, ax=ax, label=var)
     ax.set_aspect('equal')
 
@@ -59,8 +59,12 @@ def main():
         ax.set_title(f'z={zs[i]:.3f}')
         return pcm,
 
-    FuncAnimation(fig, animate, frames=K, interval=100, blit=False)
-    plt.show()
+    anim = FuncAnimation(fig, animate, frames=K, interval=100, blit=False)
+
+    # --- сохраняем в GIF ---
+    writer = PillowWriter(fps=10)              # или другой FPS на ваше усмотрение
+    anim.save("animation.gif", writer=writer)  # имя файла и писатель
+    # plt.show()
 
 if __name__=='__main__':
     main()

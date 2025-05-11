@@ -131,6 +131,6 @@ double r_b_z(double z);
 double xi_r(double r_s, double r_b);
 double xi_theta(double xi, double r_s, double r_b, double r_s_theta);
 double xi_z(double xi, double r_s, double r_b, double r_s_z, double r_b_z);
-double q(double r, double theta, double z);
+double q(double r, double theta, double z, double x_q, double z_q);
 double lambda_r(double rho, double p, double u, double v, double w);
 // double lambda_th(double r, double rho, double p, double u, double v, double w);

@@ -2,7 +2,7 @@
 #include <string>
 #include <ctime>
 
-int solver() {
+vector<double> solver(double x_q, double z_q) {
     ofstream
         z_out("z_out.txt"),
         rho_out("rho_out.txt"),
@@ -23,14 +23,15 @@ int solver() {
     // std::ofstream w_bin("w.bin", std::ios::out | std::ios::binary);
     
     int
-        N = 500, // xi
-        M = 1500; // theta
+        N = 200, // xi
+        M = 600; // theta
 
-    bool debug = false, progress_bar = true;
+    bool debug = false, progress_bar = false;
     int num_step_percent = 1000;
     vector<bool> progress_flag(num_step_percent, false);
+    bool z_limit = true;
     vector<bool> z_100(false);
-    int k = 1, z_count = 100; // сколько файлов вывести (по z)
+    int k = 1, z_count = 1; // сколько файлов вывести (по z)
 
     double
         z0 = 1.0, z = z0, L = z0 + 1.0,
@@ -95,7 +96,8 @@ int solver() {
         phi0 = phi_cone.back(), // Ввиду специфики решения уравнения обтекания конуса
         phi1 = phi_cone[0],     // угол phi отсчитывается наоборот: от УВ до поверхности тела
         dphi = (phi1 - phi0) / (phi_cone.size() - 1); // шаг постоянен
-    std::cout << phi0 << " " << phi1 << " " << dphi << endl;
+    if(debug)
+        std::cout << phi0 << " " << phi1 << " " << dphi << endl;
     
     // Начальные значения r_s, r_s_theta, r_s_z
     r_b0 = z0 * tan(phi0); // MUST BE EQUIVIVALENT TO r_b(z0)
@@ -147,7 +149,7 @@ int solver() {
 
             E[i][j] = get_E(G_prev[i][j], r);
             F[i][j] = get_F(G_prev[i][j], r);
-            R[i][j] = get_R(G_prev[i][j], r, q(r, theta, z0));
+            R[i][j] = get_R(G_prev[i][j], r, q(r, theta, z0, x_q, z_q));
 
             // Normalization
             E[i][j] =
@@ -484,7 +486,7 @@ int solver() {
                 r = r_from_xi(xi, r_s[0].back(), r_b(z));
                 E[i][0] = get_E(G_next[i][0], r);
                 F[i][0] = get_F(G_next[i][0], r);
-                R[i][0] = get_R(G_next[i][0], r, q(r, theta, z));
+                R[i][0] = get_R(G_next[i][0], r, q(r, theta, z, x_q, z_q));
     
     
                 // Восстановление физических величин по вектору G
@@ -500,7 +502,7 @@ int solver() {
                     r = r_from_xi(xi, r_s[j].back(), r_b(z));
                     E[i][j] = get_E(G_next[i][j], r);
                     F[i][j] = get_F(G_next[i][j], r);
-                    R[i][j] = get_R(G_next[i][j], r, q(r, theta, z));
+                    R[i][j] = get_R(G_next[i][j], r, q(r, theta, z, x_q, z_q));
     
                     // Восстановление физических величин по вектору G
                     rho_array[i][j] = G_next[i][j].get_rho(r);
@@ -515,7 +517,7 @@ int solver() {
                 r = r_from_xi(xi, r_s[M - 1].back(), r_b(z));
                 E[i][M - 1] = get_E(G_next[i][M - 1], r);
                 F[i][M - 1] = get_F(G_next[i][M - 1], r);
-                R[i][M - 1] = get_R(G_next[i][M - 1], r, q(r, theta, z));
+                R[i][M - 1] = get_R(G_next[i][M - 1], r, q(r, theta, z, x_q, z_q));
 
                 // Восстановление физических величин по вектору G
                 rho_array[i][M - 1] = G_next[i][M - 1].get_rho(r);
@@ -682,7 +684,17 @@ int solver() {
 
                 // psi0_out << z << "\n";
                 // psi1_out << z << "\n";
-                if(z > z0 + double(k)/double(z_count)){
+                if(z_limit){
+                    if(z > z0 + double(k)/double(z_count)){
+                        for(int i = 0; i < N; i++){
+                            psi0_out << psi0[i] << " ";
+                            psi1_out << psi1[i] << " ";
+                        }
+                        psi0_out << "\n";
+                        psi1_out << "\n";
+                    }
+                }
+                else{
                     for(int i = 0; i < N; i++){
                         psi0_out << psi0[i] << " ";
                         psi1_out << psi1[i] << " ";
@@ -718,7 +730,7 @@ int solver() {
                     
                     E[i][j] = get_E(G_next[i][j], r);
                     F[i][j] = get_F(G_next[i][j], r);
-                    R[i][j] = get_R(G_next[i][j], r, q(r, theta, z));
+                    R[i][j] = get_R(G_next[i][j], r, q(r, theta, z, x_q, z_q));
                 }
             }
             // Нормализация
@@ -759,7 +771,28 @@ int solver() {
         // u_out << z << "\n";
         // v_out << z << "\n";
         // w_out << z << "\n";
-        if(z > z0 + double(k)/double(z_count)){
+        if(z_limit){
+            if(z > z0 + double(k)/double(z_count)){
+                z_out << z << " ";
+                std::cout << z << std::endl;
+                for(int i = 0; i < N; i++){
+                    for(int j = 0; j < M; j++)
+                    {
+                        rho_out << rho_array[i][j] << " ";
+                        p_out << p_array[i][j] << " ";
+                        u_out << u_array[i][j] << " ";
+                        v_out << v_array[i][j] << " ";
+                        w_out << w_array[i][j] << " ";
+                    }
+                    rho_out << "\n";
+                    p_out << "\n";
+                    u_out << "\n";
+                    v_out << "\n";
+                    w_out << "\n";
+                }
+            }
+        }
+        else{
             z_out << z << " ";
             std::cout << z << std::endl;
             for(int i = 0; i < N; i++){
@@ -796,7 +829,20 @@ int solver() {
         // r_s_out << z << " ";
         // r_s_theta_out << z << " ";
         // r_s_z_out << z << " ";
-        if(z > z0 + double(k)/double(z_count)){
+        if(z_limit){
+            if(z > z0 + double(k)/double(z_count)){
+                for(int j = 0; j < M; j++){
+                    r_s_out << r_s[j].back() << " ";
+                    r_s_theta_out << r_s_theta[j].back() << " ";
+                    r_s_z_out << r_s_z[j].back() << " ";
+                }
+                r_s_out << "\n";
+                r_s_theta_out << "\n";
+                r_s_z_out << "\n";
+                k++;
+            }
+        }
+        else{
             for(int j = 0; j < M; j++){
                 r_s_out << r_s[j].back() << " ";
                 r_s_theta_out << r_s_theta[j].back() << " ";
@@ -805,19 +851,25 @@ int solver() {
             r_s_out << "\n";
             r_s_theta_out << "\n";
             r_s_z_out << "\n";
-            k++;
         }
     }
     if(progress_bar)
         std::cout << "100% completed" << std::endl;
     
-    std::cout << "\n=============================\nLifting force: " << Fy << std::endl;
+    std::cout << "==================================\nLifting force: " << Fy << std::endl;
     std::cout << "Rotation momentum: " << Mz << std::endl;
 
     clock_t finish = clock();
     seconds = double(finish - start) / CLOCKS_PER_SEC;
     std::cout << "Elapsed time (main loop): " << seconds << "s" << std::endl;
-    return 0;
+
+    // FILE
+    //     *fy_out = fopen("Fy_out.txt", "a"),
+    //     *mz_out = fopen("Mz_out.txt", "a");
+    // fprintf(fy_out, "%.14lf ", Fy);
+    // fprintf(mz_out, "%.14lf ", Mz);
+    vector<double> res = {Fy, Mz};
+    return res;
 }
 
 void test()
@@ -902,7 +954,57 @@ void test()
 int main()
 {
     clock_t start = clock();
-    solver();
+    vector <double>
+        z_q_array = {
+            1.     , 1.01017, 1.02045, 1.03006, 1.04059, 1.05043, 1.06038,
+            1.07045, 1.08064, 1.09009, 1.10051, 1.11073, 1.12067, 1.13084,
+            1.14065, 1.15077, 1.16008, 1.17043, 1.1809 , 1.19052, 1.20025,
+            1.21009, 1.22003, 1.23008, 1.24024, 1.25052, 1.26091, 1.27036,
+            1.28097, 1.29062, 1.30038, 1.31023, 1.32018, 1.33024, 1.34041,
+            1.35068, 1.36105, 1.37037, 1.38096, 1.39046, 1.40005, 1.41096,
+            1.42075, 1.43063, 1.44061, 1.45068, 1.46085, 1.47112, 1.48019,
+            1.49065, 1.50121, 1.51054, 1.52129, 1.53079, 1.54037, 1.55004,
+            1.56118, 1.57103, 1.58096, 1.59097, 1.60108, 1.61126, 1.62007,
+            1.63041, 1.64084, 1.65135, 1.66042, 1.67105, 1.68019, 1.6909 ,
+            1.70011, 1.71088, 1.72017, 1.73107, 1.7405 , 1.75158, 1.76115,
+            1.7708 , 1.78052, 1.79032, 1.80019, 1.81014, 1.82017, 1.83028,
+            1.84046, 1.85073, 1.86108, 1.8715 , 1.88026, 1.89084, 1.9015 ,
+            1.91046, 1.92128, 1.93036, 1.94135, 1.95056, 1.96171, 1.97107,
+            1.98049, 1.99188, 2.00144
+        },
+        x_q_array = {
+            0.3698846 , 0.37365026, 0.37744542, 0.3809791 , 0.38483902,
+            0.38843316, 0.39205698, 0.39571268, 0.39940015, 0.40280976,
+            0.40656018, 0.4102268 , 0.41378238, 0.41741284, 0.4209029 ,
+            0.42449549, 0.42779042, 0.43144557, 0.43513374, 0.43851581,
+            0.44192718, 0.44536828, 0.44883836, 0.45233899, 0.45587006,
+            0.45943357, 0.46302833, 0.46629096, 0.46994773, 0.47326703,
+            0.47661519, 0.47999053, 0.48339403, 0.48682665, 0.4902898 ,
+            0.49378136, 0.49730277, 0.50045971, 0.50404031, 0.50724909,
+            0.51048278, 0.51415292, 0.51744154, 0.52075687, 0.52409881,
+            0.52746732, 0.53086331, 0.53428672, 0.53730562, 0.54078234,
+            0.54428778, 0.54737907, 0.55093846, 0.55407795, 0.55724028,
+            0.56042683, 0.564096  , 0.56733275, 0.57059363, 0.57387812,
+            0.57718847, 0.58052242, 0.58340108, 0.58678202, 0.59018922,
+            0.59362276, 0.59658696, 0.60006916, 0.60307425, 0.60660508,
+            0.60965306, 0.61323283, 0.61632309, 0.61995332, 0.62308544,
+            0.62675627, 0.62991561, 0.63308711, 0.63626889, 0.63946426,
+            0.64267283, 0.64589842, 0.64914297, 0.65240795, 0.65569401,
+            0.65900274, 0.66233378, 0.66568529, 0.66849528, 0.67188428,
+            0.67529244, 0.6781478 , 0.68159074, 0.68447412, 0.68795298,
+            0.69086657, 0.69438342, 0.69733067, 0.70029326, 0.70386937,
+            0.70686717
+        };
+    ofstream Fy_out("Fy_out3.txt"), Mz_out("Mz_out3.txt");
+    vector<double> result;
+    int N = int(x_q_array.size());
+    for(int i = 70; i < N; i++){
+        cout << i << " iteration:" << endl;
+        result = solver(x_q_array[i], z_q_array[i]);
+        Fy_out << result[0] << " ";
+        Mz_out << result[1] << " ";
+        std::cout << "==================================\n==================================" << std::endl;
+    }
     clock_t finish = clock();
     double seconds = double(finish - start) / CLOCKS_PER_SEC;
     std::cout << "Elapsed time: " << seconds << "s" << std::endl;

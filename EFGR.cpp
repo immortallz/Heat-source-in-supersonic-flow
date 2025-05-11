@@ -192,8 +192,8 @@ double xi_z(double xi, double r_s, double r_b, double r_s_z, double r_b_z) {
     return -(r_b_z + xi * (r_s_z - r_b_z)) / (r_s - r_b);
 }
 
-double q(double r, double theta, double z) {
-    double x_q = 0.4, y_q = 0, z_q = 1.1, L_q = 0.02;
+double q(double r, double theta, double z, double x_q, double z_q) {
+    double y_q = 0, L_q = 0.02;
     double x = r * cos(theta), y = r * sin(theta);
     double p_inf = 101330, rho_inf = 1.2255;
     double a0 = sqrt(gamma * p_inf / rho_inf), Mach0 = 3;
