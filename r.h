@@ -12,6 +12,12 @@
 
 using namespace std;
 
+extern double Mach_inf;
+extern double p_inf;
+extern double rho_inf;
+extern double a_inf;
+extern double V_inf;
+
 vector<double> addVectors(const vector<double>& a, const vector<double>& b);
 
 template <typename T>
@@ -76,10 +82,6 @@ public:
 	E_array(const BaseArray& base);
 	E_array(const std::initializer_list<double>& list);
 	E_array& operator=(const BaseArray& other);
-	// template <typename T>
-	// E_array& operator=(const T& other);
-	// E_array operator*(double scalar) const;
-	// friend E_array operator*(double scalar, const E_array& arr);
 };
 
 class F_array : public BaseArray {
@@ -88,10 +90,6 @@ public:
 	F_array(const BaseArray& base);
 	F_array(const std::initializer_list<double>& list);
 	F_array& operator=(const BaseArray& other);
-	// template <typename T>
-	// F_array& operator=(const T& other);
-	// F_array operator*(double scalar) const;
-	// friend F_array operator*(double scalar, const F_array& arr);
 };
 
 class G_array : public BaseArray {
@@ -100,10 +98,6 @@ public:
 	G_array(const BaseArray& base);
 	G_array(const std::initializer_list<double>& list);
 	G_array& operator=(const BaseArray& other);
-	// template <typename T>
-	// G_array& operator=(const T& other);
-	// G_array operator*(double scalar) const;
-	// friend G_array operator*(double scalar, const G_array& arr);
 	double get_rho(double r) const override;
 	double get_p(double r) const override;
 	double get_u() const override;
@@ -133,4 +127,3 @@ double xi_theta(double xi, double r_s, double r_b, double r_s_theta);
 double xi_z(double xi, double r_s, double r_b, double r_s_z, double r_b_z);
 double q(double r, double theta, double z, double x_q, double z_q);
 double lambda_r(double rho, double p, double u, double v, double w);
-// double lambda_th(double r, double rho, double p, double u, double v, double w);

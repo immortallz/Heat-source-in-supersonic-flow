@@ -2,6 +2,10 @@
 #include <string>
 #include <ctime>
 
+double Mach_inf = 1.5, p_inf = 101330, rho_inf = 1.2255;
+double a_inf = sqrt(gamma * p_inf / rho_inf);
+double V_inf = Mach_inf*a_inf;
+
 vector<double> solver(double x_q, double z_q) {
     ofstream
         z_out("z_out.txt"),
@@ -14,37 +18,29 @@ vector<double> solver(double x_q, double z_q) {
         r_s_theta_out("r_s_theta_out.txt"),
         r_s_z_out("r_s_z_out.txt"),
         psi0_out("psi0_out.txt"),
-        psi1_out("psi1_out.txt");
-    
-    // std::ofstream rho_bin("rho.bin", std::ios::out | std::ios::binary);
-    // std::ofstream p_bin("p.bin", std::ios::out | std::ios::binary);
-    // std::ofstream u_bin("u.bin", std::ios::out | std::ios::binary);
-    // std::ofstream v_bin("v.bin", std::ios::out | std::ios::binary);
-    // std::ofstream w_bin("w.bin", std::ios::out | std::ios::binary);
+        psi1_out("psi1_out.txt"),
+        Fy_out("Fy_out.txt"),
+        Mz_out("Mz_out.txt");
     
     int
-        N = 200, // xi
-        M = 600; // theta
+        N = 100, // xi
+        M = 300; // theta
 
-    bool debug = false, progress_bar = false;
+    bool progress_bar = true;
     int num_step_percent = 1000;
     vector<bool> progress_flag(num_step_percent, false);
     bool z_limit = true;
-    vector<bool> z_100(false);
-    int k = 1, z_count = 1; // сколько файлов вывести (по z)
+    int k = 1, z_count = 20; // сколько записей в файл в единице по z
 
     double
-        z0 = 1.0, z = z0, L = z0 + 1.0,
+        z0 = 1 / tan(PI / 12.0), z = z0, L = z0 + 1.0,
         r_b0, r_b_z0,
         r_s0, r_s_z0,
         dxi = 1 / double(N - 1),
         dth = PI / double(M - 1),
-        rho, p, u, v, w,
-        Mach_inf = 3;
+        rho, p, u, v, w;
 
-    double p_inf = 101330, rho_inf = 1.2255;
-    double a0 = sqrt(gamma * p_inf / rho_inf);
-    double V_inf = Mach_inf*a0;
+    double Q = 0; // integral of q(r,theta,z)dr*dtheta*dz по всей расчетной области
 
     vector<vector<E_array>> E(N, vector<E_array>(M));
     vector<vector<F_array>> F(N, vector<F_array>(M));
@@ -96,8 +92,6 @@ vector<double> solver(double x_q, double z_q) {
         phi0 = phi_cone.back(), // Ввиду специфики решения уравнения обтекания конуса
         phi1 = phi_cone[0],     // угол phi отсчитывается наоборот: от УВ до поверхности тела
         dphi = (phi1 - phi0) / (phi_cone.size() - 1); // шаг постоянен
-    if(debug)
-        std::cout << phi0 << " " << phi1 << " " << dphi << endl;
     
     // Начальные значения r_s, r_s_theta, r_s_z
     r_b0 = z0 * tan(phi0); // MUST BE EQUIVIVALENT TO r_b(z0)
@@ -134,7 +128,7 @@ vector<double> solver(double x_q, double z_q) {
         u = VR_cone[idx_phi]*sin(phi_cone[idx_phi]) + Vphi_cone[idx_phi]*cos(phi_cone[idx_phi]);
         v = 0;
         w = VR_cone[idx_phi]*cos(phi_cone[idx_phi]) - Vphi_cone[idx_phi]*sin(phi_cone[idx_phi]);
-        
+
         // Инициализация + Нормализация вектор-функций
         for(int j = 0; j < M; j++)
         {
@@ -161,13 +155,6 @@ vector<double> solver(double x_q, double z_q) {
                 R[i][j]
                 - 0/(r_s0 - r_b0) * F[i][j] // r_s_theta = 0 ввиду симметрии задачи о конусе
                 - (r_s_z0 - r_b_z0)/(r_s0 - r_b0) * G_prev[i][j];
-            
-            if(debug && j == 0){ // debug output
-                std::cout << "xi check initial" << endl;
-                std::cout << xi_r(r_s0, r_b0) << " " << 1/z/(tan(phi1) - tan(phi0)) << endl;
-                std::cout << xi_theta(xi, r_s0, r_b0, 0) << " " << 0.0 << endl;
-                std::cout << xi_z(xi, r_s0, r_b0, r_s_z0, r_b_z0) << " " << -r/z/z/(tan(phi1) - tan(phi0)) << endl;
-            }
         }
     }
     clock_t finish_initial = clock();
@@ -179,12 +166,8 @@ vector<double> solver(double x_q, double z_q) {
 
     // Запись в файл
     z_out << z << " ";
-    // rho_out << z << "\n";
-    // p_out << z << "\n";
-    // u_out << z << "\n";
-    // v_out << z << "\n";
-    // w_out << z << "\n";
-    #pragma omp parallel for private(xi, r, theta)
+
+    // #pragma omp parallel for private(xi, r, theta)
     for(int i = 0; i < N; i++){
         xi = i * dxi;
         r = r_from_xi(xi, r_s0, r_b0);
@@ -213,24 +196,9 @@ vector<double> solver(double x_q, double z_q) {
         v_out << "\n";
         w_out << "\n";
     }
-    
-    // for(int i = 0; i < N; ++i) {
-    //     // data() возвращает double*, contiguous region of M elements
-    //     rho_bin.write(
-    //       reinterpret_cast<const char*>(rho_array[i].data()),
-    //       sizeof(double) * M
-    //     );
-    // }
+    Fy_out << Fy << " ";
+    Mz_out << Mz << " ";
 
-    // rho_out << "\n";
-    // p_out << "\n";
-    // u_out << "\n";
-    // v_out << "\n";
-    // w_out << "\n";
-
-    // r_s_out << z << " ";
-    // r_s_theta_out << z << " ";
-    // r_s_z_out << z << " ";
     for(int j = 0; j < M; j++){
         r_s_out << r_s0 << " ";
         r_s_theta_out << 0 << " ";
@@ -256,8 +224,6 @@ vector<double> solver(double x_q, double z_q) {
         psi1[i] = psi1[i - 1] + rho_array[i][M - 1] * w_array[i][M - 1] * r * dr;
     }
 
-    // psi0_out << z << "\n";
-    // psi1_out << z << "\n";
     for(int i = 0; i < N; i++){
         psi0_out << psi0[i] << " ";
         psi1_out << psi1[i] << " ";
@@ -284,7 +250,7 @@ vector<double> solver(double x_q, double z_q) {
         dz = 0.01; // Начальное приближение шага интегрирования по z
 
         // Вычисление шага dz. Спектральный метод устойчивости
-        #pragma omp parallel for reduction(min: dz) private(xi, r, xi_r_val, xi_theta_val, xi_z_val, MM, mm, lambda_xi, lambda_th)
+        // #pragma omp parallel for reduction(min: dz) private(xi, r, xi_r_val, xi_theta_val, xi_z_val, MM, mm, lambda_xi, lambda_th)
         for(int i = 0; i < N; i++){
             xi = i * dxi;
             for(int j = 0; j < M; j++){
@@ -292,12 +258,7 @@ vector<double> solver(double x_q, double z_q) {
                 xi_r_val = xi_r(r_s[j].back(), r_b(z));
                 xi_theta_val = xi_theta(xi, r_s[j].back(), r_b(z), r_s_theta[j].back());
                 xi_z_val = xi_z(xi, r_s[j].back(), r_b(z), r_s_z[j].back(), r_b_z(z));
-                if(debug && j == 0){ // debug output
-                    std::cout << "xi check before pred-corr" << endl;
-                    std::cout << xi_r_val << " " << 1/z/(tan(phi1) - tan(phi0)) << endl;
-                    std::cout << xi_theta_val << " " << 0.0 << endl;
-                    std::cout << xi_z_val << " " << -r/z/z/(tan(phi1) - tan(phi0)) << endl;
-                }
+                
                 double a = sqrt(gamma * p_array[i][j] / rho_array[i][j]);
                 MM = w_array[i][j] / a;
                 mm = (
@@ -334,7 +295,7 @@ vector<double> solver(double x_q, double z_q) {
         vector<double> r_s_pred(M), r_s_theta_pred(M), r_s_z_prev(M);
         int idx;
         for(int step = 0; step < 2; step++){ // step = 0: predictor, step = 1: corrector
-            #pragma omp parallel for private(xi, theta, idx)
+            // #pragma omp parallel for private(xi, theta, idx)
             for(int i = 0; i < N; i++){
                 xi = i * dxi;
                 // Граница theta = 0
@@ -440,8 +401,6 @@ vector<double> solver(double x_q, double z_q) {
                         r_s_theta[j].push_back(
                             r_s_theta[j].back() + dz/dth*(r_s_z_prev[j] - r_s_z_prev[j + 1])
                         );
-                        if(debug) // debug output
-                            std::cout << "r_s_theta[0] = " << r_s_theta[j].back() << endl;
                     }
                     else{
                         r_s_theta[j].push_back(
@@ -464,8 +423,6 @@ vector<double> solver(double x_q, double z_q) {
                             0.5 * (r_s_theta_pred[j] + r_s_theta[j].back())
                             + 0.5 * dz/dth * (r_s_z_prev[j - 1] - r_s_z_prev[j]) // симметрия
                         );
-                        if(debug)  // debug output
-                            std::cout << "r_s_theta[M - 1] = " << r_s_theta[j].back() << endl;
                     }
                     // r_s_theta[0].back() = 0; r_s_theta[M - 1].back() = 0; // ВЫБРАТЬ: либо зануление, либо симметрия
                 }
@@ -474,11 +431,9 @@ vector<double> solver(double x_q, double z_q) {
             // так как на корректоре не происходит фактического шага
             if(step == 0)
                 z += dz;
-            if(debug) // debug output
-                std::cout << "dz = " << dz << endl;
 
             // Восстановление векторов E, F, R и физических величин
-            #pragma omp parallel for private(xi, theta, r)
+            // #pragma omp parallel for private(xi, theta, r)
             for(int i = 0; i < N; i++){
                 xi = i * dxi;
                 // Граница theta = 0
@@ -555,12 +510,8 @@ vector<double> solver(double x_q, double z_q) {
                         + w_array[0][j]*w_array[0][j]
                     )
                 );
-                if(debug && j == 0) // debug output
-                    std::cout << "\nABBET METHOD:\nV_n = " << V_n << "\nMach = " << Mach << "\ndelta_theta = " << delta_th << endl;
 
                 // Поправка давления
-                if(debug && j == 0) // debug output
-                    std::cout << "old p = " << p_array[0][j] << " --> new p = " << p_array[0][j] * (1 - gamma*Mach*Mach*delta_th/sqrt(Mach*Mach - 1)+ gamma* Mach* ((gamma + 1)*Mach*Mach*Mach*Mach - 4*(Mach*Mach - 1))/ (4*(Mach*Mach - 1)*(Mach*Mach - 1))* delta_th * delta_th) << endl;
                 p_array[0][j] = p_array[0][j] * (
                     1 - gamma*Mach*Mach*delta_th/sqrt(Mach*Mach - 1)
                     + gamma
@@ -571,8 +522,6 @@ vector<double> solver(double x_q, double z_q) {
                 );
 
                 //Поправка плотности
-                if(debug && j == 0) // debug output
-                    std::cout << "old rho = " << rho_array[0][j] << " --> new rho = " << rho_inf * pow(p_array[0][j] / p_inf, 1/gamma) << endl;
                 rho_array[0][j] = rho_inf * pow(p_array[0][j] / p_inf, 1/gamma);
 
                 // Полная энтальпия и модуль скорости из интеграла Бернулли
@@ -587,18 +536,13 @@ vector<double> solver(double x_q, double z_q) {
     
                 double V_tau_abs = sqrt(Vr_tau*Vr_tau + Vth_tau*Vth_tau + Vz_tau*Vz_tau);
                 //Поправка скорости
-                if(debug && j == 0){ // debug output
-                    std::cout << "old u = " << u_array[0][j] << " --> new u = " << Vr_tau * V_abs / V_tau_abs << endl;
-                    std::cout << "old v = " << v_array[0][j] << " --> new v = " << Vth_tau * V_abs / V_tau_abs << endl;
-                    std::cout << "old w = " << w_array[0][j] << " --> new w = " << Vz_tau * V_abs / V_tau_abs << endl;
-                }
                 u_array[0][j] = Vr_tau * V_abs / V_tau_abs;
                 v_array[0][j] = Vth_tau * V_abs / V_tau_abs;
                 w_array[0][j] = Vz_tau * V_abs / V_tau_abs;
 
                 // Подъемная сила, поворачивающий момент
-                Fy += -p_array[0][j] * cos(theta) * r_b(z) * dth * dz;
-                Mz += -z * p_array[0][j] * cos(theta) * r_b(z) * dth * dz;
+                Fy += 2 * (-p_array[0][j] * cos(theta) * r_b(z) * dth * dz); // *2 - четность по углу
+                Mz += 2 * (-z * p_array[0][j] * cos(theta) * r_b(z) * dth * dz);
             }
 
             // Метод Томаса (поправка на поверхности ударной волны)
@@ -606,8 +550,6 @@ vector<double> solver(double x_q, double z_q) {
             for(int j = 0; j < M; j++){
                 // Давление не меняем
                 // Плотность из условия Ранкина-Гюгонио
-                if(debug && j == 0) // debug output
-                    std::cout<<"\nTHOMAS METHOD:\nold rho = "<<rho_array[N - 1][j]<<" --> new rho = "<<(rho_inf* ((gamma + 1)*p_array[N - 1][j] + (gamma - 1)*p_inf)/ ((gamma + 1)*p_inf + (gamma - 1)*p_array[N - 1][j])) << endl;
                 rho_array[N - 1][j] = (
                     rho_inf
                     * ((gamma + 1)*p_array[N - 1][j] + (gamma - 1)*p_inf)
@@ -654,11 +596,6 @@ vector<double> solver(double x_q, double z_q) {
                 V_inf_tau_y = 0 - V_inf_n * ny;
                 V_inf_tau_z = V_inf - V_inf_n * nz;
 
-                if(debug && j == 0){ // debug output
-                    std::cout << "old u = " << u_array[N - 1][j] << " --> new u = " << V_inf_tau_x + V_n*nx << endl;
-                    std::cout << "old v = " << v_array[N - 1][j] << " --> new v = " << V_inf_tau_y + V_n*ny << endl;
-                    std::cout << "old w = " << w_array[N - 1][j] << " --> new w = " << V_inf_tau_z + V_n*nz << endl;
-                }
                 u_array[N - 1][j] = V_inf_tau_x + V_n*nx;
                 v_array[N - 1][j] = V_inf_tau_y + V_n*ny;
                 w_array[N - 1][j] = V_inf_tau_z + V_n*nz;
@@ -682,8 +619,6 @@ vector<double> solver(double x_q, double z_q) {
                     psi1[i] = psi1[i - 1] + rho_array[i][M - 1] * w_array[i][M - 1] * r * dr;
                 }
 
-                // psi0_out << z << "\n";
-                // psi1_out << z << "\n";
                 if(z_limit){
                     if(z > z0 + double(k)/double(z_count)){
                         for(int i = 0; i < N; i++){
@@ -734,7 +669,7 @@ vector<double> solver(double x_q, double z_q) {
                 }
             }
             // Нормализация
-            #pragma omp parallel for private(xi, theta, r)
+            // #pragma omp parallel for private(xi, theta, r)
             for(int i = 0; i < N; i++){
                 xi = i * dxi;
                 for(int j = 0; j < M; j++){
@@ -745,13 +680,6 @@ vector<double> solver(double x_q, double z_q) {
                         + xi_theta(xi, r_s[j].back(), r_b(z), r_s_theta[j].back())*F[i][j]
                         + xi_z(xi, r_s[j].back(), r_b(z), r_s_z[j].back(), r_b_z(z))*G_next[i][j]
                     );
-                    if(debug && j == 0){
-                        std::cout << "xi check after A-T" << endl;
-                        std::cout << xi_r(r_s[j].back(), r_b(z)) << " " << 1/z/(tan(phi1) - tan(phi0)) << endl;
-                        std::cout << xi_theta(xi, r_s[j].back(), r_b(z), r_s_theta[j].back()) << " " << 0.0 << endl;
-                        std::cout << xi_z(xi, r_s[j].back(), r_b(z), r_s_z[j].back(), r_b_z(z)) << " " << -r/z/z/(tan(phi1) - tan(phi0)) << endl;
-                    }
-
                     R[i][j] = (
                         R[i][j]
                         - r_s_theta[j].back() / (r_s[j].back() - r_b(z)) * F[i][j]
@@ -764,6 +692,16 @@ vector<double> solver(double x_q, double z_q) {
                 }
             }
         }
+        // Q integration
+        for(int i = 1; i < N; i++){
+            xi = i * dxi;
+            for(int j = 0; j < M; j++){
+                r = r_from_xi(xi, r_s[j].back(), r_b(z));
+                double dr = r_from_xi(xi, r_s[j].back(), r_b(z)) - r_from_xi(xi - dxi, r_s[j].back(), r_b(z));
+                theta = j * dth;
+                Q += q(r, theta, z, x_q, z_q) * dr * r * dth * dz;
+            }
+        }
 
         // Запись в файл
         // rho_out << z << "\n";
@@ -774,7 +712,7 @@ vector<double> solver(double x_q, double z_q) {
         if(z_limit){
             if(z > z0 + double(k)/double(z_count)){
                 z_out << z << " ";
-                std::cout << z << std::endl;
+                // std::cout << z << std::endl;
                 for(int i = 0; i < N; i++){
                     for(int j = 0; j < M; j++)
                     {
@@ -790,6 +728,8 @@ vector<double> solver(double x_q, double z_q) {
                     v_out << "\n";
                     w_out << "\n";
                 }
+                Fy_out << Fy << " ";
+                Mz_out << Mz << " ";   
             }
         }
         else{
@@ -810,25 +750,10 @@ vector<double> solver(double x_q, double z_q) {
                 v_out << "\n";
                 w_out << "\n";
             }
+            Fy_out << Fy << " ";
+            Mz_out << Mz << " ";
         }
-            
-        // for(int i = 0; i < N; ++i) {
-        //     // data() возвращает double*, contiguous region of M elements
-        //     rho_bin.write(
-        //     reinterpret_cast<const char*>(rho_array[i].data()),
-        //     sizeof(double) * M
-        //     );
-        // }
-
-        // rho_out << "\n";
-        // p_out << "\n";
-        // u_out << "\n";
-        // v_out << "\n";
-        // w_out << "\n";
-
-        // r_s_out << z << " ";
-        // r_s_theta_out << z << " ";
-        // r_s_z_out << z << " ";
+        
         if(z_limit){
             if(z > z0 + double(k)/double(z_count)){
                 for(int j = 0; j < M; j++){
@@ -858,16 +783,12 @@ vector<double> solver(double x_q, double z_q) {
     
     std::cout << "==================================\nLifting force: " << Fy << std::endl;
     std::cout << "Rotation momentum: " << Mz << std::endl;
+    std::cout << "Q = " << Q << std::endl;
 
     clock_t finish = clock();
     seconds = double(finish - start) / CLOCKS_PER_SEC;
     std::cout << "Elapsed time (main loop): " << seconds << "s" << std::endl;
 
-    // FILE
-    //     *fy_out = fopen("Fy_out.txt", "a"),
-    //     *mz_out = fopen("Mz_out.txt", "a");
-    // fprintf(fy_out, "%.14lf ", Fy);
-    // fprintf(mz_out, "%.14lf ", Mz);
     vector<double> res = {Fy, Mz};
     return res;
 }
@@ -951,9 +872,8 @@ void test()
     F_mirrored.print();
 }
 
-int main()
+void force_and_momentum_by_heat_location()
 {
-    clock_t start = clock();
     vector <double>
         z_q_array = {
             1.     , 1.01017, 1.02045, 1.03006, 1.04059, 1.05043, 1.06038,
@@ -995,16 +915,23 @@ int main()
             0.69086657, 0.69438342, 0.69733067, 0.70029326, 0.70386937,
             0.70686717
         };
-    ofstream Fy_out("Fy_out3.txt"), Mz_out("Mz_out3.txt");
+    ofstream Fy_out("Fy_out_heat.txt"), Mz_out("Mz_out_heat.txt");
     vector<double> result;
     int N = int(x_q_array.size());
-    for(int i = 70; i < N; i++){
+    for(int i = 0; i < 70; i++){
         cout << i << " iteration:" << endl;
         result = solver(x_q_array[i], z_q_array[i]);
         Fy_out << result[0] << " ";
         Mz_out << result[1] << " ";
         std::cout << "==================================\n==================================" << std::endl;
     }
+}
+
+int main()
+{
+    clock_t start = clock();
+    double z0 = 1 / tan(PI / 12.0);
+    solver(1.1, z0 + 1.0);
     clock_t finish = clock();
     double seconds = double(finish - start) / CLOCKS_PER_SEC;
     std::cout << "Elapsed time: " << seconds << "s" << std::endl;

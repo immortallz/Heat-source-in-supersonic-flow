@@ -8,3 +8,5 @@ Runge-Kutta/*.txt
 123.nb
 .ipynb_checkpoints/
 cone17.f90
+*.png
+*.gif

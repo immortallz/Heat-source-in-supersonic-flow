@@ -171,8 +171,10 @@ double r_from_xi(double xi, double r_s, double r_b){
 
 double r_b(double z) {
     // return tan(PI / 12.0) * z; // коническое тело
-    return tan(PI / 12.0) * sqrt(2*z - 1); // параболическое тело
-    // return tan(PI / 12.0) * (z / 20.0 + 0.95); // усеченный конус (конус + цилиндр)
+    // return tan(PI / 12.0) * sqrt(2*z - 1); // параболическое тело
+    double z0 = 1 / tan(PI / 12.0);
+    return 1.0; // цилиндр
+    return 1 * (z / 20.0 - z0 / 20.0 + 1); // усеченный конус (конус + цилиндр)
 }
 
 double r_b_z(double z){
@@ -195,13 +197,9 @@ double xi_z(double xi, double r_s, double r_b, double r_s_z, double r_b_z) {
 double q(double r, double theta, double z, double x_q, double z_q) {
     double y_q = 0, L_q = 0.02;
     double x = r * cos(theta), y = r * sin(theta);
-    double p_inf = 101330, rho_inf = 1.2255;
-    double a0 = sqrt(gamma * p_inf / rho_inf), Mach0 = 3;
-    double V_inf = Mach0 * a0;
     double Q = 1.0 / 20.0, q_0 = Q * V_inf * V_inf * V_inf / L_q;
-    // if(z < 1.1) return 0;
-    return q_0 * exp(-((x - x_q)*(x - x_q) + (y - y_q)*(y - y_q) + (z - z_q)*(z - z_q)) / L_q/L_q);
-    return 0;
+    return q_0 * exp(-((x - x_q)*(x - x_q) + (y - y_q)*(y - y_q) + (z - z_q)*(z - z_q)) / L_q / L_q);
+    return 0; // Адиабатический случай
 }
 
 double lambda_r(double rho, double p, double u, double v, double w)
@@ -211,11 +209,3 @@ double lambda_r(double rho, double p, double u, double v, double w)
         / (rho*w*w - p);
     return lambda;
 }
-
-// double lambda_th(double r, double rho, double p, double u, double v, double w)
-// {
-//     double lambda =
-//         (abs(rho*v*w) + sqrt(p*rho*(v*v + w*w) - p*p))
-//         / (rho*w*w - p) / r;
-//     return lambda;
-// }
