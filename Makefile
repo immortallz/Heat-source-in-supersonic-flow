@@ -1,7 +1,7 @@
 CXX = g++
 CXXFLAGS = -std=c++11 -fopenmp -Wall -O2
 
-OBJS = BaseArray.o EFGR.o main.o
+OBJS = BaseArray.o EFGR.o heatSourceConfiguration.o bodySurface.o normalizedXiConfiguration.o solver.o main.o
 
 all: run
 
@@ -16,6 +16,18 @@ BaseArray.o: BaseArray.cpp r.h
 
 EFGR.o: EFGR.cpp r.h
 	$(CXX) $(CXXFLAGS) -c EFGR.cpp
+
+heatSourceConfiguration.o: heatSourceConfiguration.cpp r.h
+	$(CXX) $(CXXFLAGS) -c heatSourceConfiguration.cpp
+
+bodySurface.o: bodySurface.cpp r.h
+	$(CXX) $(CXXFLAGS) -c bodySurface.cpp
+
+normalizedXiConfiguration.o: normalizedXiConfiguration.cpp r.h
+	$(CXX) $(CXXFLAGS) -c normalizedXiConfiguration.cpp
+
+solver.o: solver.cpp r.h
+	$(CXX) $(CXXFLAGS) -c solver.cpp
 
 main.o: main.cpp r.h
 	$(CXX) $(CXXFLAGS) -c main.cpp

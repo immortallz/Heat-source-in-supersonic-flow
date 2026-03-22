@@ -1,14 +1,14 @@
 #include "r.h"
 
-void RK(double t0, double T, double h, vector<double> y0, string filename)
+void RK(double t0, double T, double h, std::vector<double> y0, std::string filename)
 {
 	int
 		s = 7, //num of stages
 		dim = y0.size();
-	vector<vector<double>>
-		a(s + 1, vector<double>(s)),
-		k(s + 1, vector<double>(dim));
-	vector<double>
+	std::vector<std::vector<double>>
+		a(s + 1, std::vector<double>(s)),
+		k(s + 1, std::vector<double>(dim));
+	std::vector<double>
 		b(s + 1),
 		c(s + 1),
 		nn(dim),

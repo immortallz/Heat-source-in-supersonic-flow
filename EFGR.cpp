@@ -32,27 +32,26 @@ G_array& G_array::operator=(const BaseArray& other) {
     return *this;
 }
 
-double G_array::get_rho(double r) const {
-    double alpha = -sqrt(
-        (gamma*gamma - 1)*data[1]*data[1]
-        + (gamma*gamma - 1)*data[2]*data[2]
-        + gamma*gamma*data[3]*data[3]
-        - 2*(gamma*gamma - 1)*data[0]*data[4]
+double G_array::get_alpha() const {
+    return -sqrt(
+        (Gamma*Gamma - 1)*data[1]*data[1]
+        + (Gamma*Gamma - 1)*data[2]*data[2]
+        + Gamma*Gamma*data[3]*data[3]
+        - 2*(Gamma*Gamma - 1)*data[0]*data[4]
     );
+}
+
+double G_array::get_rho(double r) const {
+    double alpha = get_alpha();
     double result =
-        (data[0]*data[0]*(gamma*data[3] + alpha))
-        / ((gamma - 1)*(2*data[0]*data[4] - data[1]*data[1] - data[2]*data[2]));
+        (data[0]*data[0]*(Gamma*data[3] + alpha))
+        / ((Gamma - 1)*(2*data[0]*data[4] - data[1]*data[1] - data[2]*data[2]));
     return result / r;
 }
 
 double G_array::get_p(double r) const {
-    double alpha = -sqrt(
-        (gamma*gamma - 1)*data[1]*data[1]
-        + (gamma*gamma - 1)*data[2]*data[2]
-        + gamma*gamma*data[3]*data[3]
-        - 2*(gamma*gamma - 1)*data[0]*data[4]
-    );
-    double result = (data[3] + alpha) / (gamma + 1);
+    double alpha = get_alpha();
+    double result = (data[3] + alpha) / (Gamma + 1);
     return result / r;
 }
 
@@ -65,13 +64,8 @@ double G_array::get_v() const {
 }
 
 double G_array::get_w() const {
-    double alpha = -sqrt(
-        (gamma*gamma - 1)*data[1]*data[1]
-        + (gamma*gamma - 1)*data[2]*data[2]
-        + gamma*gamma*data[3]*data[3]
-        - 2*(gamma*gamma - 1)*data[0]*data[4]
-    );
-    double result = (gamma*data[3] - alpha) / ((gamma + 1)*data[0]);
+    double alpha = get_alpha();
+    double result = (Gamma*data[3] - alpha) / ((Gamma + 1)*data[0]);
     return result;
 }
 
@@ -128,7 +122,7 @@ E_array get_E(G_array G, double r) {
         rho * u * u + p,
         rho * u * v,
         rho * u * w,
-        u * (gamma/(gamma - 1)*p + 0.5 * rho * (u*u + v*v + w*w))
+        u * (Gamma/(Gamma - 1)*p + 0.5 * rho * (u*u + v*v + w*w))
     };
     return r * result;
 }
@@ -145,7 +139,7 @@ F_array get_F(G_array G, double r) {
         rho * u * v,
         rho * v * v + p,
         rho * v * w,
-        v * (gamma/(gamma - 1)*p + 0.5 * rho * (u*u + v*v + w*w))
+        v * (Gamma/(Gamma - 1)*p + 0.5 * rho * (u*u + v*v + w*w))
     };
     return result;
 }
@@ -163,49 +157,4 @@ R_array get_R(G_array G, double r, double q_val) {
         q_val
     };
     return result;
-}
-
-double r_from_xi(double xi, double r_s, double r_b){
-    return (r_s - r_b)*xi + r_b;
-}
-
-double r_b(double z) {
-    // return tan(PI / 12.0) * z; // коническое тело
-    // return tan(PI / 12.0) * sqrt(2*z - 1); // параболическое тело
-    double z0 = 1 / tan(PI / 12.0);
-    return 1.0; // цилиндр
-    return 1 * (z / 20.0 - z0 / 20.0 + 1); // усеченный конус (конус + цилиндр)
-}
-
-double r_b_z(double z){
-    double dz = 1e-12;
-    return (r_b(z + dz) - r_b(z - dz)) / dz * 0.5;
-}
-
-double xi_r(double r_s, double r_b) {
-    return 1 / (r_s - r_b);
-}
-
-double xi_theta(double xi, double r_s, double r_b, double r_s_theta) {
-    return -xi * r_s_theta / (r_s - r_b);
-}
-
-double xi_z(double xi, double r_s, double r_b, double r_s_z, double r_b_z) {
-    return -(r_b_z + xi * (r_s_z - r_b_z)) / (r_s - r_b);
-}
-
-double q(double r, double theta, double z, double x_q, double z_q) {
-    double y_q = 0, L_q = 0.02;
-    double x = r * cos(theta), y = r * sin(theta);
-    double Q = 1.0 / 20.0, q_0 = Q * V_inf * V_inf * V_inf / L_q;
-    return q_0 * exp(-((x - x_q)*(x - x_q) + (y - y_q)*(y - y_q) + (z - z_q)*(z - z_q)) / L_q / L_q);
-    return 0; // Адиабатический случай
-}
-
-double lambda_r(double rho, double p, double u, double v, double w)
-{
-    double lambda = 
-        (abs(rho*u*w) + sqrt(p*rho*(u*u + w*w) - p*p))
-        / (rho*w*w - p);
-    return lambda;
 }

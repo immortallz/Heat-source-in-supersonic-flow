@@ -6,44 +6,40 @@
 #include <iostream>
 #include <fstream>
 #include <omp.h>
+#include <ctime>
 
-#define gamma 1.4
-#define PI 3.141592653589793
+constexpr double Gamma = 1.4;
+constexpr double Pi = 3.141592653589793;
 
-using namespace std;
+enum class BodyType {
+    Cylindrical,
+    Cone,
+	Parabolic,
+	DoubleCone
+};
 
-extern double Mach_inf;
-extern double p_inf;
-extern double rho_inf;
-extern double a_inf;
-extern double V_inf;
+struct Params {
+    double Mach_inf;
+    double p_inf;
+    double rho_inf;
+    double a_inf;
+    double V_inf;
+    bool is_adiabatic;
+	BodyType bodyType;
+};
 
-vector<double> addVectors(const vector<double>& a, const vector<double>& b);
+extern Params params;
+
+std::vector<double> addVectors(const std::vector<double>& a, const std::vector<double>& b);
 
 template <typename T>
-vector<T> operator+(const vector<T>& a, const vector<T>& b);
+std::vector<T> operator+(const std::vector<T>& a, const std::vector<T>& b);
 
 template <typename T>
-vector<T> operator*(const vector<T>& vec, T scalar);
+std::vector<T> operator*(const std::vector<T>& vec, T scalar);
 
 template <typename T>
-vector<T> operator*(T scalar, const vector<T>& vec);
-
-double a_sqaured(vector<double> v, double C);
-
-vector<double> func(double theta, vector<double> v, double C);
-
-vector<double> RK(double t0, double T, double h, vector<double> y0, string filename, double C);
-
-double secant_method(double p0, double rho0, double V1, double theta0,
-	double beta0, double beta1,
-	double h, double tol
-	);
-
-double newton_method(double p0, double rho0, double V1, double theta0,
-	double beta0,
-	double h, double tol
-	);
+std::vector<T> operator*(T scalar, const std::vector<T>& vec);
 
 class BaseArray {
 	protected:
@@ -98,6 +94,7 @@ public:
 	G_array(const BaseArray& base);
 	G_array(const std::initializer_list<double>& list);
 	G_array& operator=(const BaseArray& other);
+	double get_alpha() const;
 	double get_rho(double r) const override;
 	double get_p(double r) const override;
 	double get_u() const override;
@@ -120,10 +117,12 @@ F_array get_F(G_array G, double r);
 R_array get_R(G_array G, double r, double q);
 
 double r_from_xi(double xi, double r_s, double r_b);
-double r_b(double z);
-double r_b_z(double z);
+double r_b(double z, BodyType bodyType);
+double r_b_z(double z, BodyType bodyType);
 double xi_r(double r_s, double r_b);
 double xi_theta(double xi, double r_s, double r_b, double r_s_theta);
 double xi_z(double xi, double r_s, double r_b, double r_s_z, double r_b_z);
-double q(double r, double theta, double z, double x_q, double z_q);
+double q(double r, double theta, double z, double x_q, double z_q, bool is_adiabatic);
 double lambda_r(double rho, double p, double u, double v, double w);
+
+std::vector<double> solver(double x_q, double z_q);
