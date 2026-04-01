@@ -3,19 +3,19 @@
 
 std::vector<double> solver(HeatSource heatSource) {
     std::ofstream
-        z_out("z_out.txt"),
-        rho_out("rho_out.txt"),
-        p_out("p_out.txt"),
-        u_out("u_out.txt"),
-        v_out("v_out.txt"),
-        w_out("w_out.txt"),
-        r_s_out("r_s_out.txt"),
-        r_s_theta_out("r_s_theta_out.txt"),
-        r_s_z_out("r_s_z_out.txt"),
-        psi0_out("psi0_out.txt"),
-        psi1_out("psi1_out.txt"),
-        Fy_out("Fy_out.txt"),
-        Mz_out("Mz_out.txt");
+        z_out("output_results/z_out.txt"),
+        rho_out("output_results/rho_out.txt"),
+        p_out("output_results/p_out.txt"),
+        u_out("output_results/u_out.txt"),
+        v_out("output_results/v_out.txt"),
+        w_out("output_results/w_out.txt"),
+        r_s_out("output_results/r_s_out.txt"),
+        r_s_theta_out("output_results/r_s_theta_out.txt"),
+        r_s_z_out("output_results/r_s_z_out.txt"),
+        psi0_out("output_results/psi0_out.txt"),
+        psi1_out("output_results/psi1_out.txt"),
+        Fy_out("output_results/Fy_out.txt"),
+        Mz_out("output_results/Mz_out.txt");
     
     int
         N = numericalParams.N, // xi
@@ -58,7 +58,7 @@ std::vector<double> solver(HeatSource heatSource) {
 
     // Чтение (заранее заготовленных) начальных данных
     // из задачи об обтекании конуса
-    FILE *f_cone = fopen("rho_init.txt", "r");
+    FILE *f_cone = fopen("initial_cone_flow/output_results/rho_init.txt", "r");
     while(!feof(f_cone))
     {
         double a, b;
@@ -67,7 +67,7 @@ std::vector<double> solver(HeatSource heatSource) {
         rho_cone.push_back(b);
     }
     fclose(f_cone);
-    f_cone = fopen("p_init.txt", "r");
+    f_cone = fopen("initial_cone_flow/output_results/p_init.txt", "r");
     while(!feof(f_cone))
     {
         double a, b;
@@ -75,7 +75,7 @@ std::vector<double> solver(HeatSource heatSource) {
         p_cone.push_back(b);
     }
     fclose(f_cone);
-    f_cone = fopen("VR_Vtheta_init.txt", "r");
+    f_cone = fopen("initial_cone_flow/output_results/VR_Vtheta_init.txt", "r");
     while(!feof(f_cone))
     {
         double a, b, c;

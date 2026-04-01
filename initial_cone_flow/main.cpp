@@ -29,7 +29,7 @@ int main()
 	v[0] = V1 * cos(beta);
 	v[1] = -rho1_rho2 * V1 * sin(beta);
 	vector<double> sol(2);
-	sol = RK(beta, theta0, -0.00001, v, "VR_Vtheta_init.txt", C);
+	sol = RK(beta, theta0, -0.00001, v, "output_results/VR_Vtheta_init.txt", C);
 	cout << "V_R, V_theta on body surface: " << sol[0] << ", " << sol[1] << endl;
 
 	double rho_s, p_s;
@@ -38,9 +38,9 @@ int main()
 
 	double C_entr = p0 / pow(rho0, gamma);
 
-	FILE *f_rho = fopen("rho_init.txt", "w"), *f_p = fopen("p_init.txt", "w");
+	FILE *f_rho = fopen("output_results/rho_init.txt", "w"), *f_p = fopen("output_results/p_init.txt", "w");
 
-	ifstream input("VR_Vtheta_init.txt");
+	ifstream input("output_results/VR_Vtheta_init.txt");
     if (!input) {
         cerr << "Не удалось открыть файл!" << endl;
         return 1;

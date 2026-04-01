@@ -91,11 +91,11 @@ void test()
 void force_and_momentum_by_heat_location(int N_z, int N_r, double L = 0.02, double Q = 0.2)
 {
     std::ofstream
-        Fy_out("Fy_out_heat.txt"),
-        Mz_out("Mz_out_heat.txt"),
-        Q_out("Q_out_heat.txt"),
-        z_out("z_out_heat.txt"),
-        r_out("r_out_heat.txt");
+        Fy_out("heat_source_variation/Fy_out_heat.txt"),
+        Mz_out("heat_source_variation/Mz_out_heat.txt"),
+        Q_out("heat_source_variation/Q_out_heat.txt"),
+        z_out("heat_source_variation/z_out_heat.txt"),
+        r_out("heat_source_variation/r_out_heat.txt");
     std::vector<double> result;
     
     double
@@ -207,8 +207,8 @@ int main()
     numericalParams.num_step_percent = 1;
     numericalParams.files_count = 1;
 
-    force_and_momentum_by_heat_location(20, 15, 0.02, 0.2);
-    force_and_momentum_by_heat_location(20, 15, 0.02, 0.05);
+    force_and_momentum_by_heat_location(40, 20, 0.02, 0.25);
+    force_and_momentum_by_heat_location(40, 20, 0.02, 0.05);
 
     return 0;
 }
