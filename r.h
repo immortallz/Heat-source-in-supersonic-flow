@@ -18,17 +18,39 @@ enum class BodyType {
 	DoubleCone
 };
 
-struct Params {
+struct FlowParams {
     double Mach_inf;
     double p_inf;
     double rho_inf;
     double a_inf;
     double V_inf;
     bool is_adiabatic;
+};
+
+struct BodyParams {
+	double transitionPoint; // transition from cone to arbitrary body surface
+	double bodyLength;
 	BodyType bodyType;
 };
 
-extern Params params;
+struct NumericalParams {
+	int N; // xi coordinate nodes count
+	int M; // theta coordinate nodes count
+	int num_step_percent;
+	int files_count;
+};
+
+struct HeatSource {
+    double x;
+    double y;
+    double z;
+    double L;   // characteristic sourse length
+    double Q;   // dimensionless intensity
+};
+
+extern FlowParams flowParams;
+extern BodyParams bodyParams;
+extern NumericalParams numericalParams;
 
 std::vector<double> addVectors(const std::vector<double>& a, const std::vector<double>& b);
 
@@ -122,7 +144,7 @@ double r_b_z(double z, BodyType bodyType);
 double xi_r(double r_s, double r_b);
 double xi_theta(double xi, double r_s, double r_b, double r_s_theta);
 double xi_z(double xi, double r_s, double r_b, double r_s_z, double r_b_z);
-double q(double r, double theta, double z, double x_q, double z_q, bool is_adiabatic);
+double q(double r, double theta, double z, HeatSource heatSource, bool is_adiabatic);
 double lambda_r(double rho, double p, double u, double v, double w);
 
-std::vector<double> solver(double x_q, double z_q);
+std::vector<double> solver(HeatSource heatSource);

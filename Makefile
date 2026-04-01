@@ -1,5 +1,5 @@
 CXX = g++
-CXXFLAGS = -std=c++11 -fopenmp -Wall -O2
+CXXFLAGS = -std=c++11 -fopenmp -Wall -O2 -Iinclude
 
 OBJS = BaseArray.o EFGR.o heatSourceConfiguration.o bodySurface.o normalizedXiConfiguration.o solver.o main.o
 

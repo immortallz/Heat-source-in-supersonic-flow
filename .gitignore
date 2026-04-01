@@ -10,3 +10,5 @@ Runge-Kutta/*.txt
 cone17.f90
 *.png
 *.gif
+*.json
+.gitignore

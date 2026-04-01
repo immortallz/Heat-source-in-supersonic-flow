@@ -1,6 +1,13 @@
 #include "r.h"
+#include <nlohmann/json.hpp>
 
-Params params;
+using json = nlohmann::json;
+
+FlowParams flowParams;
+BodyParams bodyParams;
+NumericalParams numericalParams;
+HeatSource heatSource;
+
 
 void test()
 {
@@ -129,37 +136,89 @@ void force_and_momentum_by_heat_location()
     int N = int(x_q_array.size());
     for(int i = 0; i < 70; i++){
         std::cout << i << " iteration:" << std::endl;
-        result = solver(x_q_array[i], z_q_array[i]);
+        HeatSource src {x_q_array[i], 0, z_q_array[i], 0.2, 1.0/20.0};
+        result = solver(src);
         Fy_out << result[0] << " ";
         Mz_out << result[1] << " ";
         std::cout << "==================================\n==================================" << std::endl;
     }
 }
 
+std::string to_string(BodyType type) {
+    switch(type) {
+        case BodyType::Cylindrical: return "Cylindrical";
+        case BodyType::Cone: return "Cone";
+        case BodyType::Parabolic: return "Parabolic";
+        case BodyType::DoubleCone: return "DoubleCone";
+    }
+    return "Unknown";
+}
+
+void save_params(
+    const FlowParams& flowParams,
+    const BodyParams& bodyParams,
+    const NumericalParams& numericalParams)
+{
+    json flowJson, bodyJson, numericalJson;
+    flowJson["Mach_inf"] = flowParams.Mach_inf;
+    flowJson["p_inf"] = flowParams.p_inf;
+    flowJson["rho_inf"] = flowParams.rho_inf;
+
+    bodyJson["transitionPoint"] = bodyParams.transitionPoint;
+    bodyJson["bodyLength"] = bodyParams.bodyLength;
+    bodyJson["bodyType"] = to_string(bodyParams.bodyType);
+
+    numericalJson["N"] = numericalParams.N;
+    numericalJson["M"] = numericalParams.M;
+    numericalJson["num_step_percent"] = numericalParams.num_step_percent;
+    numericalJson["files_count"] = numericalParams.files_count;
+
+    std::ofstream
+        flowFile("flowParams.json"),
+        bodyFile("bodyParams.json"),
+        numericalFile("numericalParams.json");
+
+    flowFile << flowJson.dump(4); // красиво с отступами
+    bodyFile << bodyJson.dump(4);
+    numericalFile << numericalJson.dump(4);
+}
+
 int main()
 {
-    params.Mach_inf = 3;
-    params.p_inf = 101330;
-    params.rho_inf = 1.2255;
+    flowParams.Mach_inf = 3;
+    flowParams.p_inf = 101330;
+    flowParams.rho_inf = 1.2255;
 
-    params.a_inf = sqrt(Gamma * params.p_inf / params.rho_inf);
-    params.V_inf = params.Mach_inf * params.a_inf;
+    flowParams.a_inf = sqrt(Gamma * flowParams.p_inf / flowParams.rho_inf);
+    flowParams.V_inf = flowParams.Mach_inf * flowParams.a_inf;
 
-    params.is_adiabatic = false;
+    flowParams.is_adiabatic = false;
 
-    params.bodyType = BodyType::DoubleCone;
+    bodyParams.transitionPoint = 1.0; // not recommended to change, works bad on other values yet
+    bodyParams.bodyLength = 2.0;
+    bodyParams.bodyType = BodyType::DoubleCone;
 
-    // double Mach_inf = 3, p_inf = 101330, rho_inf = 1.2255;
-    // double a_inf = sqrt(Gamma * p_inf / rho_inf);
-    // double V_inf = Mach_inf*a_inf;
-    // bool is_adiabatic = false;
+    numericalParams.N = 200;
+    numericalParams.M = 600;
+    numericalParams.num_step_percent = 100;
+    numericalParams.files_count = 100;
+
+    heatSource.x = 0.5;
+    heatSource.y = 0.0; // do not change this because we assume source is located in theta=0 plane
+    heatSource.z = 1.1;
+    heatSource.L = 0.02;
+    heatSource.Q = 1.0 / 3.0;
+
+    // tan(pi / 12) ~ 0.26794919243
 
     clock_t start = clock();
-    // double z0 = 1 / tan(Pi / 12.0);
-    solver(0.5, 1 + 0.1);
+    solver(heatSource);
     clock_t finish = clock();
     double seconds = double(finish - start) / CLOCKS_PER_SEC;
     std::cout << "Elapsed time: " << seconds << "s" << std::endl;
+
+    save_params(flowParams, bodyParams, numericalParams);
+
     // test();
 
     return 0;

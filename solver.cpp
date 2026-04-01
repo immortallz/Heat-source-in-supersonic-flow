@@ -1,7 +1,7 @@
 #include "r.h"
 #include <string>
 
-std::vector<double> solver(double x_q, double z_q) {
+std::vector<double> solver(HeatSource heatSource) {
     std::ofstream
         z_out("z_out.txt"),
         rho_out("rho_out.txt"),
@@ -18,17 +18,17 @@ std::vector<double> solver(double x_q, double z_q) {
         Mz_out("Mz_out.txt");
     
     int
-        N = 100, // xi
-        M = 300; // theta
+        N = numericalParams.N, // xi
+        M = numericalParams.M; // theta
 
     bool progress_bar = true;
-    int num_step_percent = 1000;
+    int num_step_percent = numericalParams.num_step_percent;
     std::vector<bool> progress_flag(num_step_percent, false);
     bool z_limit = true;
-    int k = 1, z_count = 100; // сколько записей в файл в единице по z
+    int k = 1, files_count = numericalParams.files_count; // сколько записей в файл в единице по z
 
     double
-        z0 = 1.0, z = z0, L = z0 + 1.0,
+        z0 = bodyParams.transitionPoint, z = z0, L = bodyParams.bodyLength,
         r_b0, r_b_z0,
         r_s0, r_s_z0,
         dxi = 1 / double(N - 1),
@@ -140,7 +140,7 @@ std::vector<double> solver(double x_q, double z_q) {
 
             E[i][j] = get_E(G_prev[i][j], r);
             F[i][j] = get_F(G_prev[i][j], r);
-            R[i][j] = get_R(G_prev[i][j], r, q(r, theta, z0, x_q, z_q, params.is_adiabatic));
+            R[i][j] = get_R(G_prev[i][j], r, q(r, theta, z0, heatSource, flowParams.is_adiabatic));
 
             // Normalization
             E[i][j] =
@@ -209,15 +209,15 @@ std::vector<double> solver(double x_q, double z_q) {
     psi0[0] = 0;
     for(int i = 1; i < N; i++){
         xi = i * dxi;
-        r = r_from_xi(xi, r_s[0].back(), r_b(z, params.bodyType));
-        double dr = r_from_xi(xi, r_s[0].back(), r_b(z, params.bodyType)) - r_from_xi(xi - dxi, r_s[0].back(), r_b(z, params.bodyType));
+        r = r_from_xi(xi, r_s[0].back(), r_b(z, bodyParams.bodyType));
+        double dr = r_from_xi(xi, r_s[0].back(), r_b(z, bodyParams.bodyType)) - r_from_xi(xi - dxi, r_s[0].back(), r_b(z, bodyParams.bodyType));
         psi0[i] = psi0[i - 1] + rho_array[i][0] * w_array[i][0] * r * dr;
     }
     psi1[0] = 0;
     for(int i = 1; i < N; i++){
         xi = i * dxi;
-        r = r_from_xi(xi, r_s[M - 1].back(), r_b(z, params.bodyType));
-        double dr = r_from_xi(xi, r_s[M - 1].back(), r_b(z, params.bodyType)) - r_from_xi(xi - dxi, r_s[M - 1].back(), r_b(z, params.bodyType));
+        r = r_from_xi(xi, r_s[M - 1].back(), r_b(z, bodyParams.bodyType));
+        double dr = r_from_xi(xi, r_s[M - 1].back(), r_b(z, bodyParams.bodyType)) - r_from_xi(xi - dxi, r_s[M - 1].back(), r_b(z, bodyParams.bodyType));
         psi1[i] = psi1[i - 1] + rho_array[i][M - 1] * w_array[i][M - 1] * r * dr;
     }
 
@@ -251,10 +251,10 @@ std::vector<double> solver(double x_q, double z_q) {
         for(int i = 0; i < N; i++){
             xi = i * dxi;
             for(int j = 0; j < M; j++){
-                r = r_from_xi(xi, r_s[j].back(), r_b(z, params.bodyType));
-                xi_r_val = xi_r(r_s[j].back(), r_b(z, params.bodyType));
-                xi_theta_val = xi_theta(xi, r_s[j].back(), r_b(z, params.bodyType), r_s_theta[j].back());
-                xi_z_val = xi_z(xi, r_s[j].back(), r_b(z, params.bodyType), r_s_z[j].back(), r_b_z(z, params.bodyType));
+                r = r_from_xi(xi, r_s[j].back(), r_b(z, bodyParams.bodyType));
+                xi_r_val = xi_r(r_s[j].back(), r_b(z, bodyParams.bodyType));
+                xi_theta_val = xi_theta(xi, r_s[j].back(), r_b(z, bodyParams.bodyType), r_s_theta[j].back());
+                xi_z_val = xi_z(xi, r_s[j].back(), r_b(z, bodyParams.bodyType), r_s_z[j].back(), r_b_z(z, bodyParams.bodyType));
                 
                 double a = sqrt(Gamma * p_array[i][j] / rho_array[i][j]);
                 MM = w_array[i][j] / a;
@@ -297,7 +297,7 @@ std::vector<double> solver(double x_q, double z_q) {
                 xi = i * dxi;
                 // Граница theta = 0
                 theta = 0;
-                if(step == 0){ // predictor
+                if(step == 0) { // predictor
                     idx = int(i == N - 1);
                     G_next[i][0] = predictor(
                         E[i - idx][0],
@@ -309,7 +309,7 @@ std::vector<double> solver(double x_q, double z_q) {
                         dxi, dth, dz
                     );
                 }
-                else{ //corrector
+                else { //corrector
                     F_array F_mirrored = (-1) * F[i][1];
                     F_mirrored[2] = (-1) * F_mirrored[2];
                     idx = int(i == 0);
@@ -435,10 +435,10 @@ std::vector<double> solver(double x_q, double z_q) {
                 xi = i * dxi;
                 // Граница theta = 0
                 theta = 0;
-                r = r_from_xi(xi, r_s[0].back(), r_b(z, params.bodyType));
+                r = r_from_xi(xi, r_s[0].back(), r_b(z, bodyParams.bodyType));
                 E[i][0] = get_E(G_next[i][0], r);
                 F[i][0] = get_F(G_next[i][0], r);
-                R[i][0] = get_R(G_next[i][0], r, q(r, theta, z, x_q, z_q, params.is_adiabatic));
+                R[i][0] = get_R(G_next[i][0], r, q(r, theta, z, heatSource, flowParams.is_adiabatic));
     
     
                 // Восстановление физических величин по вектору G
@@ -451,10 +451,10 @@ std::vector<double> solver(double x_q, double z_q) {
                 // Внутренние (по theta) узлы
                 for(int j = 1; j < M - 1; j++){
                     theta = j*dth;
-                    r = r_from_xi(xi, r_s[j].back(), r_b(z, params.bodyType));
+                    r = r_from_xi(xi, r_s[j].back(), r_b(z, bodyParams.bodyType));
                     E[i][j] = get_E(G_next[i][j], r);
                     F[i][j] = get_F(G_next[i][j], r);
-                    R[i][j] = get_R(G_next[i][j], r, q(r, theta, z, x_q, z_q, params.is_adiabatic));
+                    R[i][j] = get_R(G_next[i][j], r, q(r, theta, z, heatSource, flowParams.is_adiabatic));
     
                     // Восстановление физических величин по вектору G
                     rho_array[i][j] = G_next[i][j].get_rho(r);
@@ -466,10 +466,10 @@ std::vector<double> solver(double x_q, double z_q) {
                 
                 // Граница theta = Pi
                 theta = Pi;
-                r = r_from_xi(xi, r_s[M - 1].back(), r_b(z, params.bodyType));
+                r = r_from_xi(xi, r_s[M - 1].back(), r_b(z, bodyParams.bodyType));
                 E[i][M - 1] = get_E(G_next[i][M - 1], r);
                 F[i][M - 1] = get_F(G_next[i][M - 1], r);
-                R[i][M - 1] = get_R(G_next[i][M - 1], r, q(r, theta, z, x_q, z_q, params.is_adiabatic));
+                R[i][M - 1] = get_R(G_next[i][M - 1], r, q(r, theta, z, heatSource, flowParams.is_adiabatic));
 
                 // Восстановление физических величин по вектору G
                 rho_array[i][M - 1] = G_next[i][M - 1].get_rho(r);
@@ -486,8 +486,8 @@ std::vector<double> solver(double x_q, double z_q) {
                 double delta_th;
                 theta = j * dth;
                 // (V*, n) - скалярное произведение
-                double V_n = (u_array[0][j] - r_b_z(z, params.bodyType)*w_array[0][j])
-                    / sqrt(1 + r_b_z(z, params.bodyType)*r_b_z(z, params.bodyType));
+                double V_n = (u_array[0][j] - r_b_z(z, bodyParams.bodyType)*w_array[0][j])
+                    / sqrt(1 + r_b_z(z, bodyParams.bodyType)*r_b_z(z, bodyParams.bodyType));
                 double Mach = sqrt(
                     (
                         u_array[0][j]*u_array[0][j]
@@ -519,17 +519,17 @@ std::vector<double> solver(double x_q, double z_q) {
                 );
 
                 //Поправка плотности
-                rho_array[0][j] = params.rho_inf * pow(p_array[0][j] / params.p_inf, 1/Gamma);
+                rho_array[0][j] = flowParams.rho_inf * pow(p_array[0][j] / flowParams.p_inf, 1/Gamma);
 
                 // Полная энтальпия и модуль скорости из интеграла Бернулли
-                double H = Gamma/(Gamma - 1) * params.p_inf/params.rho_inf + 0.5*params.V_inf*params.V_inf;
+                double H = Gamma/(Gamma - 1) * flowParams.p_inf/flowParams.rho_inf + 0.5*flowParams.V_inf*flowParams.V_inf;
                 double V_abs = sqrt(2*(H - Gamma/(Gamma - 1) * p_array[0][j]/rho_array[0][j]));
     
                 double Vr_tau, Vth_tau, Vz_tau;
                 // Касательная компонента скорости V_tau:
-                Vr_tau = u_array[0][j] - V_n / sqrt(1 + r_b_z(z, params.bodyType)*r_b_z(z, params.bodyType));
+                Vr_tau = u_array[0][j] - V_n / sqrt(1 + r_b_z(z, bodyParams.bodyType)*r_b_z(z, bodyParams.bodyType));
                 Vth_tau = v_array[0][j];
-                Vz_tau = w_array[0][j] + V_n * r_b_z(z, params.bodyType) / sqrt(1 + r_b_z(z, params.bodyType)*r_b_z(z, params.bodyType));
+                Vz_tau = w_array[0][j] + V_n * r_b_z(z, bodyParams.bodyType) / sqrt(1 + r_b_z(z, bodyParams.bodyType)*r_b_z(z, bodyParams.bodyType));
     
                 double V_tau_abs = sqrt(Vr_tau*Vr_tau + Vth_tau*Vth_tau + Vz_tau*Vz_tau);
                 //Поправка скорости
@@ -538,8 +538,8 @@ std::vector<double> solver(double x_q, double z_q) {
                 w_array[0][j] = Vz_tau * V_abs / V_tau_abs;
 
                 // Подъемная сила, поворачивающий момент
-                Fy += 2 * (-p_array[0][j] * cos(theta) * r_b(z, params.bodyType) * dth * dz); // *2 - четность по углу
-                Mz += 2 * (-(z - 5.0/4.0) * p_array[0][j] * cos(theta) * r_b(z, params.bodyType) * dth * dz);
+                Fy += 2 * (-p_array[0][j] * cos(theta) * r_b(z, bodyParams.bodyType) * dth * dz); // *2 - четность по углу
+                Mz += 2 * (-(z - 5.0/4.0) * p_array[0][j] * cos(theta) * r_b(z, bodyParams.bodyType) * dth * dz);
             }
 
             // Метод Томаса (поправка на поверхности ударной волны)
@@ -548,22 +548,22 @@ std::vector<double> solver(double x_q, double z_q) {
                 // Давление не меняем
                 // Плотность из условия Ранкина-Гюгонио
                 rho_array[N - 1][j] = (
-                    params.rho_inf
-                    * ((Gamma + 1)*p_array[N - 1][j] + (Gamma - 1)*params.p_inf)
-                    / ((Gamma + 1)*params.p_inf + (Gamma - 1)*p_array[N - 1][j])
+                    flowParams.rho_inf
+                    * ((Gamma + 1)*p_array[N - 1][j] + (Gamma - 1)*flowParams.p_inf)
+                    / ((Gamma + 1)*flowParams.p_inf + (Gamma - 1)*p_array[N - 1][j])
                 );
                 // Корень с отрицательным знаком, так как нормаль берется внешняя
                 double V_inf_n = -sqrt(
-                    ((Gamma + 1)*p_array[N - 1][j] + (Gamma - 1)*params.p_inf)
-                    / (2 * params.rho_inf)
+                    ((Gamma + 1)*p_array[N - 1][j] + (Gamma - 1)*flowParams.p_inf)
+                    / (2 * flowParams.rho_inf)
                 );
-                double V_n = params.rho_inf / rho_array[N - 1][j] * V_inf_n;
+                double V_n = flowParams.rho_inf / rho_array[N - 1][j] * V_inf_n;
                 if(step == 0)
                     r_s_z[j].push_back(
                         sqrt(
                             V_inf_n * V_inf_n
                             * (1 + r_s_theta[j].back()*r_s_theta[j].back()/r_s[j].back()/r_s[j].back())
-                            / (params.V_inf*params.V_inf - V_inf_n*V_inf_n)
+                            / (flowParams.V_inf*flowParams.V_inf - V_inf_n*V_inf_n)
                         )
                     );
                 else
@@ -571,7 +571,7 @@ std::vector<double> solver(double x_q, double z_q) {
                         sqrt(
                             V_inf_n * V_inf_n
                             * (1 + r_s_theta[j].back()*r_s_theta[j].back()/r_s[j].back()/r_s[j].back())
-                            / (params.V_inf*params.V_inf - V_inf_n*V_inf_n)
+                            / (flowParams.V_inf*flowParams.V_inf - V_inf_n*V_inf_n)
                         )
                     );
 
@@ -591,7 +591,7 @@ std::vector<double> solver(double x_q, double z_q) {
                 double V_inf_tau_x, V_inf_tau_y, V_inf_tau_z;
                 V_inf_tau_x = 0 - V_inf_n * nx;
                 V_inf_tau_y = 0 - V_inf_n * ny;
-                V_inf_tau_z = params.V_inf - V_inf_n * nz;
+                V_inf_tau_z = flowParams.V_inf - V_inf_n * nz;
 
                 u_array[N - 1][j] = V_inf_tau_x + V_n*nx;
                 v_array[N - 1][j] = V_inf_tau_y + V_n*ny;
@@ -604,20 +604,20 @@ std::vector<double> solver(double x_q, double z_q) {
                 psi0[0] = 0;
                 for(int i = 1; i < N; i++){
                     xi = i * dxi;
-                    r = r_from_xi(xi, r_s[0].back(), r_b(z, params.bodyType));
-                    double dr = r_from_xi(xi, r_s[0].back(), r_b(z, params.bodyType)) - r_from_xi(xi - dxi, r_s[0].back(), r_b(z, params.bodyType));
+                    r = r_from_xi(xi, r_s[0].back(), r_b(z, bodyParams.bodyType));
+                    double dr = r_from_xi(xi, r_s[0].back(), r_b(z, bodyParams.bodyType)) - r_from_xi(xi - dxi, r_s[0].back(), r_b(z, bodyParams.bodyType));
                     psi0[i] = psi0[i - 1] + rho_array[i][0] * w_array[i][0] * r * dr;
                 }
                 psi1[0] = 0;
                 for(int i = 1; i < N; i++){
                     xi = i * dxi;
-                    r = r_from_xi(xi, r_s[M - 1].back(), r_b(z, params.bodyType));
-                    double dr = r_from_xi(xi, r_s[M - 1].back(), r_b(z, params.bodyType)) - r_from_xi(xi - dxi, r_s[M - 1].back(), r_b(z, params.bodyType));
+                    r = r_from_xi(xi, r_s[M - 1].back(), r_b(z, bodyParams.bodyType));
+                    double dr = r_from_xi(xi, r_s[M - 1].back(), r_b(z, bodyParams.bodyType)) - r_from_xi(xi - dxi, r_s[M - 1].back(), r_b(z, bodyParams.bodyType));
                     psi1[i] = psi1[i - 1] + rho_array[i][M - 1] * w_array[i][M - 1] * r * dr;
                 }
 
                 if(z_limit){
-                    if(z > z0 + double(k)/double(z_count)){
+                    if(z > z0 + double(k)/double(files_count)){
                         for(int i = 0; i < N; i++){
                             psi0_out << psi0[i] << " ";
                             psi1_out << psi1[i] << " ";
@@ -641,7 +641,7 @@ std::vector<double> solver(double x_q, double z_q) {
                 xi = i * dxi;
                 for(int j = 0; j < M; j++){
                     theta = j * dth;
-                    r = r_from_xi(xi, r_s[j].back(), r_b(z, params.bodyType));
+                    r = r_from_xi(xi, r_s[j].back(), r_b(z, bodyParams.bodyType));
 
                     G_next[i][j].data[0] = rho_array[i][j]*w_array[i][j];
                     G_next[i][j].data[1] = rho_array[i][j]*u_array[i][j]*w_array[i][j];
@@ -662,7 +662,7 @@ std::vector<double> solver(double x_q, double z_q) {
                     
                     E[i][j] = get_E(G_next[i][j], r);
                     F[i][j] = get_F(G_next[i][j], r);
-                    R[i][j] = get_R(G_next[i][j], r, q(r, theta, z, x_q, z_q, params.is_adiabatic));
+                    R[i][j] = get_R(G_next[i][j], r, q(r, theta, z, heatSource, flowParams.is_adiabatic));
                 }
             }
             // Нормализация
@@ -671,16 +671,16 @@ std::vector<double> solver(double x_q, double z_q) {
                 xi = i * dxi;
                 for(int j = 0; j < M; j++){
                     theta = j * dth;
-                    r = r_from_xi(xi, r_s[j].back(), r_b(z, params.bodyType));
+                    r = r_from_xi(xi, r_s[j].back(), r_b(z, bodyParams.bodyType));
                     E[i][j] = (
-                        xi_r(r_s[j].back(), r_b(z, params.bodyType))*E[i][j]
-                        + xi_theta(xi, r_s[j].back(), r_b(z, params.bodyType), r_s_theta[j].back())*F[i][j]
-                        + xi_z(xi, r_s[j].back(), r_b(z, params.bodyType), r_s_z[j].back(), r_b_z(z, params.bodyType))*G_next[i][j]
+                        xi_r(r_s[j].back(), r_b(z, bodyParams.bodyType))*E[i][j]
+                        + xi_theta(xi, r_s[j].back(), r_b(z, bodyParams.bodyType), r_s_theta[j].back())*F[i][j]
+                        + xi_z(xi, r_s[j].back(), r_b(z, bodyParams.bodyType), r_s_z[j].back(), r_b_z(z, bodyParams.bodyType))*G_next[i][j]
                     );
                     R[i][j] = (
                         R[i][j]
-                        - r_s_theta[j].back() / (r_s[j].back() - r_b(z, params.bodyType)) * F[i][j]
-                        - (r_s_z[j].back() - r_b_z(z, params.bodyType)) / (r_s[j].back() - r_b(z, params.bodyType)) * G_next[i][j]
+                        - r_s_theta[j].back() / (r_s[j].back() - r_b(z, bodyParams.bodyType)) * F[i][j]
+                        - (r_s_z[j].back() - r_b_z(z, bodyParams.bodyType)) / (r_s[j].back() - r_b(z, bodyParams.bodyType)) * G_next[i][j]
                     );
 
                     // обновление G_prev <-- G_next после корректора (после окончания полного шага)
@@ -693,10 +693,10 @@ std::vector<double> solver(double x_q, double z_q) {
         for(int i = 1; i < N; i++){
             xi = i * dxi;
             for(int j = 0; j < M; j++){
-                r = r_from_xi(xi, r_s[j].back(), r_b(z, params.bodyType));
-                double dr = r_from_xi(xi, r_s[j].back(), r_b(z, params.bodyType)) - r_from_xi(xi - dxi, r_s[j].back(), r_b(z, params.bodyType));
+                r = r_from_xi(xi, r_s[j].back(), r_b(z, bodyParams.bodyType));
+                double dr = r_from_xi(xi, r_s[j].back(), r_b(z, bodyParams.bodyType)) - r_from_xi(xi - dxi, r_s[j].back(), r_b(z, bodyParams.bodyType));
                 theta = j * dth;
-                Q += q(r, theta, z, x_q, z_q, params.is_adiabatic) * dr * r * dth * dz;
+                Q += q(r, theta, z, heatSource, flowParams.is_adiabatic) * dr * r * dth * dz;
             }
         }
 
@@ -707,7 +707,7 @@ std::vector<double> solver(double x_q, double z_q) {
         // v_out << z << "\n";
         // w_out << z << "\n";
         if(z_limit){
-            if(z > z0 + double(k)/double(z_count)){
+            if(z > z0 + double(k)/double(files_count)){
                 z_out << z << " ";
                 // std::cout << z << std::endl;
                 for(int i = 0; i < N; i++){
@@ -752,7 +752,7 @@ std::vector<double> solver(double x_q, double z_q) {
         }
         
         if(z_limit){
-            if(z > z0 + double(k)/double(z_count)){
+            if(z > z0 + double(k)/double(files_count)){
                 for(int j = 0; j < M; j++){
                     r_s_out << r_s[j].back() << " ";
                     r_s_theta_out << r_s_theta[j].back() << " ";
