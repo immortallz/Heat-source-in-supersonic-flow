@@ -1,7 +1,7 @@
 #include "r.h"
 
-double r_b(double z, BodyType bodyType) {
-    switch (bodyType)
+double r_b(double z) {
+    switch (bodyParams.bodyType)
     {
         case BodyType::Cylindrical:
             return tan(Pi / 12.0);
@@ -22,7 +22,7 @@ double r_b(double z, BodyType bodyType) {
     }
 }
 
-double r_b_z(double z, BodyType bodyType) {
+double r_b_z(double z) {
     double dz = 1e-12;
-    return (r_b(z + dz, bodyType) - r_b(z - dz, bodyType)) / dz * 0.5;
+    return (r_b(z + dz) - r_b(z - dz)) / dz * 0.5;
 }

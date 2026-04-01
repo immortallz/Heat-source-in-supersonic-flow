@@ -209,15 +209,15 @@ std::vector<double> solver(HeatSource heatSource) {
     psi0[0] = 0;
     for(int i = 1; i < N; i++){
         xi = i * dxi;
-        r = r_from_xi(xi, r_s[0].back(), r_b(z, bodyParams.bodyType));
-        double dr = r_from_xi(xi, r_s[0].back(), r_b(z, bodyParams.bodyType)) - r_from_xi(xi - dxi, r_s[0].back(), r_b(z, bodyParams.bodyType));
+        r = r_from_xi(xi, r_s[0].back(), r_b(z));
+        double dr = r_from_xi(xi, r_s[0].back(), r_b(z)) - r_from_xi(xi - dxi, r_s[0].back(), r_b(z));
         psi0[i] = psi0[i - 1] + rho_array[i][0] * w_array[i][0] * r * dr;
     }
     psi1[0] = 0;
     for(int i = 1; i < N; i++){
         xi = i * dxi;
-        r = r_from_xi(xi, r_s[M - 1].back(), r_b(z, bodyParams.bodyType));
-        double dr = r_from_xi(xi, r_s[M - 1].back(), r_b(z, bodyParams.bodyType)) - r_from_xi(xi - dxi, r_s[M - 1].back(), r_b(z, bodyParams.bodyType));
+        r = r_from_xi(xi, r_s[M - 1].back(), r_b(z));
+        double dr = r_from_xi(xi, r_s[M - 1].back(), r_b(z)) - r_from_xi(xi - dxi, r_s[M - 1].back(), r_b(z));
         psi1[i] = psi1[i - 1] + rho_array[i][M - 1] * w_array[i][M - 1] * r * dr;
     }
 
@@ -251,10 +251,10 @@ std::vector<double> solver(HeatSource heatSource) {
         for(int i = 0; i < N; i++){
             xi = i * dxi;
             for(int j = 0; j < M; j++){
-                r = r_from_xi(xi, r_s[j].back(), r_b(z, bodyParams.bodyType));
-                xi_r_val = xi_r(r_s[j].back(), r_b(z, bodyParams.bodyType));
-                xi_theta_val = xi_theta(xi, r_s[j].back(), r_b(z, bodyParams.bodyType), r_s_theta[j].back());
-                xi_z_val = xi_z(xi, r_s[j].back(), r_b(z, bodyParams.bodyType), r_s_z[j].back(), r_b_z(z, bodyParams.bodyType));
+                r = r_from_xi(xi, r_s[j].back(), r_b(z));
+                xi_r_val = xi_r(r_s[j].back(), r_b(z));
+                xi_theta_val = xi_theta(xi, r_s[j].back(), r_b(z), r_s_theta[j].back());
+                xi_z_val = xi_z(xi, r_s[j].back(), r_b(z), r_s_z[j].back(), r_b_z(z));
                 
                 double a = sqrt(Gamma * p_array[i][j] / rho_array[i][j]);
                 MM = w_array[i][j] / a;
@@ -435,7 +435,7 @@ std::vector<double> solver(HeatSource heatSource) {
                 xi = i * dxi;
                 // Граница theta = 0
                 theta = 0;
-                r = r_from_xi(xi, r_s[0].back(), r_b(z, bodyParams.bodyType));
+                r = r_from_xi(xi, r_s[0].back(), r_b(z));
                 E[i][0] = get_E(G_next[i][0], r);
                 F[i][0] = get_F(G_next[i][0], r);
                 R[i][0] = get_R(G_next[i][0], r, q(r, theta, z, heatSource, flowParams.is_adiabatic));
@@ -451,7 +451,7 @@ std::vector<double> solver(HeatSource heatSource) {
                 // Внутренние (по theta) узлы
                 for(int j = 1; j < M - 1; j++){
                     theta = j*dth;
-                    r = r_from_xi(xi, r_s[j].back(), r_b(z, bodyParams.bodyType));
+                    r = r_from_xi(xi, r_s[j].back(), r_b(z));
                     E[i][j] = get_E(G_next[i][j], r);
                     F[i][j] = get_F(G_next[i][j], r);
                     R[i][j] = get_R(G_next[i][j], r, q(r, theta, z, heatSource, flowParams.is_adiabatic));
@@ -466,7 +466,7 @@ std::vector<double> solver(HeatSource heatSource) {
                 
                 // Граница theta = Pi
                 theta = Pi;
-                r = r_from_xi(xi, r_s[M - 1].back(), r_b(z, bodyParams.bodyType));
+                r = r_from_xi(xi, r_s[M - 1].back(), r_b(z));
                 E[i][M - 1] = get_E(G_next[i][M - 1], r);
                 F[i][M - 1] = get_F(G_next[i][M - 1], r);
                 R[i][M - 1] = get_R(G_next[i][M - 1], r, q(r, theta, z, heatSource, flowParams.is_adiabatic));
@@ -486,8 +486,8 @@ std::vector<double> solver(HeatSource heatSource) {
                 double delta_th;
                 theta = j * dth;
                 // (V*, n) - скалярное произведение
-                double V_n = (u_array[0][j] - r_b_z(z, bodyParams.bodyType)*w_array[0][j])
-                    / sqrt(1 + r_b_z(z, bodyParams.bodyType)*r_b_z(z, bodyParams.bodyType));
+                double V_n = (u_array[0][j] - r_b_z(z)*w_array[0][j])
+                    / sqrt(1 + r_b_z(z)*r_b_z(z));
                 double Mach = sqrt(
                     (
                         u_array[0][j]*u_array[0][j]
@@ -527,9 +527,9 @@ std::vector<double> solver(HeatSource heatSource) {
     
                 double Vr_tau, Vth_tau, Vz_tau;
                 // Касательная компонента скорости V_tau:
-                Vr_tau = u_array[0][j] - V_n / sqrt(1 + r_b_z(z, bodyParams.bodyType)*r_b_z(z, bodyParams.bodyType));
+                Vr_tau = u_array[0][j] - V_n / sqrt(1 + r_b_z(z)*r_b_z(z));
                 Vth_tau = v_array[0][j];
-                Vz_tau = w_array[0][j] + V_n * r_b_z(z, bodyParams.bodyType) / sqrt(1 + r_b_z(z, bodyParams.bodyType)*r_b_z(z, bodyParams.bodyType));
+                Vz_tau = w_array[0][j] + V_n * r_b_z(z) / sqrt(1 + r_b_z(z)*r_b_z(z));
     
                 double V_tau_abs = sqrt(Vr_tau*Vr_tau + Vth_tau*Vth_tau + Vz_tau*Vz_tau);
                 //Поправка скорости
@@ -538,8 +538,9 @@ std::vector<double> solver(HeatSource heatSource) {
                 w_array[0][j] = Vz_tau * V_abs / V_tau_abs;
 
                 // Подъемная сила, поворачивающий момент
-                Fy += 2 * (-p_array[0][j] * cos(theta) * r_b(z, bodyParams.bodyType) * dth * dz); // *2 - четность по углу
-                Mz += 2 * (-(z - 5.0/4.0) * p_array[0][j] * cos(theta) * r_b(z, bodyParams.bodyType) * dth * dz);
+                Fy += 2 * (-p_array[0][j] * cos(theta) * r_b(z) * dth * dz); // *2 - четность по углу
+                 // TODO: describe mass center more precisely
+                Mz += 2 * (-(z - 5.0/4.0 * bodyParams.bodyLength * 0.5) * p_array[0][j] * cos(theta) * r_b(z) * dth * dz);
             }
 
             // Метод Томаса (поправка на поверхности ударной волны)
@@ -604,15 +605,15 @@ std::vector<double> solver(HeatSource heatSource) {
                 psi0[0] = 0;
                 for(int i = 1; i < N; i++){
                     xi = i * dxi;
-                    r = r_from_xi(xi, r_s[0].back(), r_b(z, bodyParams.bodyType));
-                    double dr = r_from_xi(xi, r_s[0].back(), r_b(z, bodyParams.bodyType)) - r_from_xi(xi - dxi, r_s[0].back(), r_b(z, bodyParams.bodyType));
+                    r = r_from_xi(xi, r_s[0].back(), r_b(z));
+                    double dr = r_from_xi(xi, r_s[0].back(), r_b(z)) - r_from_xi(xi - dxi, r_s[0].back(), r_b(z));
                     psi0[i] = psi0[i - 1] + rho_array[i][0] * w_array[i][0] * r * dr;
                 }
                 psi1[0] = 0;
                 for(int i = 1; i < N; i++){
                     xi = i * dxi;
-                    r = r_from_xi(xi, r_s[M - 1].back(), r_b(z, bodyParams.bodyType));
-                    double dr = r_from_xi(xi, r_s[M - 1].back(), r_b(z, bodyParams.bodyType)) - r_from_xi(xi - dxi, r_s[M - 1].back(), r_b(z, bodyParams.bodyType));
+                    r = r_from_xi(xi, r_s[M - 1].back(), r_b(z));
+                    double dr = r_from_xi(xi, r_s[M - 1].back(), r_b(z)) - r_from_xi(xi - dxi, r_s[M - 1].back(), r_b(z));
                     psi1[i] = psi1[i - 1] + rho_array[i][M - 1] * w_array[i][M - 1] * r * dr;
                 }
 
@@ -641,7 +642,7 @@ std::vector<double> solver(HeatSource heatSource) {
                 xi = i * dxi;
                 for(int j = 0; j < M; j++){
                     theta = j * dth;
-                    r = r_from_xi(xi, r_s[j].back(), r_b(z, bodyParams.bodyType));
+                    r = r_from_xi(xi, r_s[j].back(), r_b(z));
 
                     G_next[i][j].data[0] = rho_array[i][j]*w_array[i][j];
                     G_next[i][j].data[1] = rho_array[i][j]*u_array[i][j]*w_array[i][j];
@@ -671,16 +672,16 @@ std::vector<double> solver(HeatSource heatSource) {
                 xi = i * dxi;
                 for(int j = 0; j < M; j++){
                     theta = j * dth;
-                    r = r_from_xi(xi, r_s[j].back(), r_b(z, bodyParams.bodyType));
+                    r = r_from_xi(xi, r_s[j].back(), r_b(z));
                     E[i][j] = (
-                        xi_r(r_s[j].back(), r_b(z, bodyParams.bodyType))*E[i][j]
-                        + xi_theta(xi, r_s[j].back(), r_b(z, bodyParams.bodyType), r_s_theta[j].back())*F[i][j]
-                        + xi_z(xi, r_s[j].back(), r_b(z, bodyParams.bodyType), r_s_z[j].back(), r_b_z(z, bodyParams.bodyType))*G_next[i][j]
+                        xi_r(r_s[j].back(), r_b(z))*E[i][j]
+                        + xi_theta(xi, r_s[j].back(), r_b(z), r_s_theta[j].back())*F[i][j]
+                        + xi_z(xi, r_s[j].back(), r_b(z), r_s_z[j].back(), r_b_z(z))*G_next[i][j]
                     );
                     R[i][j] = (
                         R[i][j]
-                        - r_s_theta[j].back() / (r_s[j].back() - r_b(z, bodyParams.bodyType)) * F[i][j]
-                        - (r_s_z[j].back() - r_b_z(z, bodyParams.bodyType)) / (r_s[j].back() - r_b(z, bodyParams.bodyType)) * G_next[i][j]
+                        - r_s_theta[j].back() / (r_s[j].back() - r_b(z)) * F[i][j]
+                        - (r_s_z[j].back() - r_b_z(z)) / (r_s[j].back() - r_b(z)) * G_next[i][j]
                     );
 
                     // обновление G_prev <-- G_next после корректора (после окончания полного шага)
@@ -693,8 +694,8 @@ std::vector<double> solver(HeatSource heatSource) {
         for(int i = 1; i < N; i++){
             xi = i * dxi;
             for(int j = 0; j < M; j++){
-                r = r_from_xi(xi, r_s[j].back(), r_b(z, bodyParams.bodyType));
-                double dr = r_from_xi(xi, r_s[j].back(), r_b(z, bodyParams.bodyType)) - r_from_xi(xi - dxi, r_s[j].back(), r_b(z, bodyParams.bodyType));
+                r = r_from_xi(xi, r_s[j].back(), r_b(z));
+                double dr = r_from_xi(xi, r_s[j].back(), r_b(z)) - r_from_xi(xi - dxi, r_s[j].back(), r_b(z));
                 theta = j * dth;
                 Q += q(r, theta, z, heatSource, flowParams.is_adiabatic) * dr * r * dth * dz;
             }
@@ -786,6 +787,6 @@ std::vector<double> solver(HeatSource heatSource) {
     seconds = double(finish - start) / CLOCKS_PER_SEC;
     std::cout << "Elapsed time (main loop): " << seconds << "s" << std::endl;
 
-    std::vector<double> res = {Fy, Mz};
+    std::vector<double> res = {Fy, Mz, Q};
     return res;
 }

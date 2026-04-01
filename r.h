@@ -139,8 +139,8 @@ F_array get_F(G_array G, double r);
 R_array get_R(G_array G, double r, double q);
 
 double r_from_xi(double xi, double r_s, double r_b);
-double r_b(double z, BodyType bodyType);
-double r_b_z(double z, BodyType bodyType);
+double r_b(double z);
+double r_b_z(double z);
 double xi_r(double r_s, double r_b);
 double xi_theta(double xi, double r_s, double r_b, double r_s_theta);
 double xi_z(double xi, double r_s, double r_b, double r_s_z, double r_b_z);
