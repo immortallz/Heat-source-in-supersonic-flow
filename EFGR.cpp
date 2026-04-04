@@ -41,17 +41,17 @@ double G_array::get_alpha() const {
     );
 }
 
-double G_array::get_rho(double r) const {
-    double alpha = get_alpha();
-    double result =
+double G_array::get_rho(const double r) const {
+    const double alpha = get_alpha();
+    const double result =
         (data[0]*data[0]*(Gamma*data[3] + alpha))
         / ((Gamma - 1)*(2*data[0]*data[4] - data[1]*data[1] - data[2]*data[2]));
     return result / r;
 }
 
-double G_array::get_p(double r) const {
-    double alpha = get_alpha();
-    double result = (data[3] + alpha) / (Gamma + 1);
+double G_array::get_p(const double r) const {
+    const double alpha = get_alpha();
+    const double result = (data[3] + alpha) / (Gamma + 1);
     return result / r;
 }
 
@@ -64,8 +64,8 @@ double G_array::get_v() const {
 }
 
 double G_array::get_w() const {
-    double alpha = get_alpha();
-    double result = (Gamma*data[3] - alpha) / ((Gamma + 1)*data[0]);
+    const double alpha = get_alpha();
+    const double result = (Gamma*data[3] - alpha) / ((Gamma + 1)*data[0]);
     return result;
 }
 
@@ -82,13 +82,11 @@ R_array& R_array::operator=(const BaseArray& other) {
 
 // Функции вычислений
 G_array predictor(
-    E_array Em, 
-    E_array Ep, 
-    F_array Fm, 
-    F_array Fp, 
-    G_array G, 
-    R_array R, 
-    double dr, double dth, double dz
+    const E_array& Em, const E_array& Ep,
+    const F_array& Fm, const F_array& Fp,
+    const G_array &G,
+    const R_array& R,
+    const double dr, const double dth, const double dz
 ) {
     G_array result = G;
     result = result - dz/dr * (Ep - Em) - dz/dth * (Fp - Fm) + dz * R;
@@ -96,28 +94,24 @@ G_array predictor(
 }
 
 G_array corrector(
-    E_array Em, 
-    E_array Ep, 
-    F_array Fm, 
-    F_array Fp, 
-    G_array Gm, 
-    G_array Gp, 
-    R_array R, 
-    double dr, double dth, double dz
+    const E_array& Em, const E_array& Ep,
+    const F_array& Fm, const F_array& Fp,
+    const G_array& Gm, const G_array& Gp,
+    const R_array& R,
+    const double dr, const double dth, const double dz
 ) {
-    G_array result;
-    result = (Gp + Gm) * 0.5;
+    G_array result = (Gp + Gm) * 0.5;
     result = result - 0.5 * dz/dr * (Ep - Em) - 0.5 * dz/dth * (Fp - Fm) + 0.5 * dz * R;
     return result;
 }
 
-E_array get_E(G_array G, double r) {
-    double rho = G.get_rho(r);
-    double p   = G.get_p(r);
-    double u   = G.get_u();
-    double v   = G.get_v();
-    double w   = G.get_w();
-    E_array result = {
+E_array get_E(const G_array& G, const double r) {
+    const double rho = G.get_rho(r);
+    const double p   = G.get_p(r);
+    const double u   = G.get_u();
+    const double v   = G.get_v();
+    const double w   = G.get_w();
+    const E_array result = {
         rho * u,
         rho * u * u + p,
         rho * u * v,
@@ -127,14 +121,14 @@ E_array get_E(G_array G, double r) {
     return r * result;
 }
 
-F_array get_F(G_array G, double r) {
+F_array get_F(const G_array& G, const double r) {
     // Для функций get_F и get_R используем r = 1 при вычислении rho и p
-    double rho = G.get_rho(r);
-    double p   = G.get_p(r);
-    double u   = G.get_u();
-    double v   = G.get_v();
-    double w   = G.get_w();
-    F_array result = {
+    const double rho = G.get_rho(r);
+    const double p   = G.get_p(r);
+    const double u   = G.get_u();
+    const double v   = G.get_v();
+    const double w   = G.get_w();
+    const F_array result = {
         rho * v,
         rho * u * v,
         rho * v * v + p,
@@ -144,17 +138,17 @@ F_array get_F(G_array G, double r) {
     return result;
 }
 
-R_array get_R(G_array G, double r, double q_val) {
-    double rho = G.get_rho(r);
-    double p   = G.get_p(r);
-    double u   = G.get_u();
-    double v   = G.get_v();
-    R_array result = {
+R_array get_R(const G_array& G, const double r, const double q) {
+    const double rho = G.get_rho(r);
+    const double p   = G.get_p(r);
+    const double u   = G.get_u();
+    const double v   = G.get_v();
+    const R_array result = {
         0,
         rho * v * v + p,
         -rho * u * v,
         0,
-        q_val
+        q
     };
     return result;
 }

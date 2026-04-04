@@ -1,11 +1,11 @@
 #include "r.h"
 
-double q(double r, double theta, double z, HeatSource heatSource, bool is_adiabatic) {
+double q(const double r, const double theta, const double z, const HeatSource &heatSource, const bool is_adiabatic) {
     if (is_adiabatic){
         return 0.0;
     }
 
-    double
+    const double
         x = r * cos(theta),
         y = r * sin(theta),
         x_q = heatSource.x,

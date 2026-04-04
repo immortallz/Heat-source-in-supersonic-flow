@@ -21,18 +21,17 @@ std::vector<double> solver(HeatSource heatSource) {
         N = numericalParams.N, // xi
         M = numericalParams.M; // theta
 
-    bool progress_bar = true;
     int num_step_percent = numericalParams.num_step_percent;
     std::vector<bool> progress_flag(num_step_percent, false);
-    bool z_limit = true;
+    bool progress_bar = num_step_percent > 0;
     int k = 1, files_count = numericalParams.files_count; // сколько записей в файл в единице по z
 
     double
         z0 = bodyParams.transitionPoint, z = z0, L = bodyParams.bodyLength,
         r_b0, r_b_z0,
         r_s0, r_s_z0,
-        dxi = 1 / double(N - 1),
-        dth = Pi / double(M - 1),
+        dxi = 1 / static_cast<double>(N - 1),
+        dth = Pi / static_cast<double>(M - 1),
         rho, p, u, v, w;
 
     double Q = 0; // integral of q(r,theta,z)dr*dtheta*dz по всей расчетной области
@@ -88,12 +87,12 @@ std::vector<double> solver(HeatSource heatSource) {
     double
         phi0 = phi_cone.back(), // Ввиду специфики решения уравнения обтекания конуса
         phi1 = phi_cone[0],     // угол phi отсчитывается наоборот: от УВ до поверхности тела
-        dphi = (phi1 - phi0) / (phi_cone.size() - 1); // шаг постоянен
+        dphi = (phi1 - phi0) / (static_cast<double>(phi_cone.size()) - 1); // шаг постоянен
     
     // Начальные значения r_s, r_s_theta, r_s_z
-    r_b0 = z0 * tan(phi0); // MUST BE EQUIVIVALENT TO r_b(z0)
+    r_b0 = z0 * tan(phi0); // MUST BE EQUIVALENT TO r_b(z0)
     r_s0 = z0 * tan(phi1);
-    r_b_z0 = tan(phi0); // MUST BE EQUIVIVALENT TO r_b_z(z0)
+    r_b_z0 = tan(phi0); // MUST BE EQUIVALENT TO r_b_z(z0)
     r_s_z0 = tan(phi1);
     for(int j = 0; j < M; j++)
     {
@@ -155,8 +154,8 @@ std::vector<double> solver(HeatSource heatSource) {
         }
     }
     clock_t finish_initial = clock();
-    seconds = double(finish_initial - start_initial) / CLOCKS_PER_SEC;
-    // std::cout << "Elapsed time (initial layer): " << seconds << "s" << std::endl;
+    seconds = static_cast<double>(finish_initial - start_initial) / CLOCKS_PER_SEC;
+    std::cout << "Elapsed time (initial layer): " << seconds << "s" << std::endl;
 
     // Подъемная сила, поворачивающий момент
     double Fy = 0, Mz = 0;
@@ -169,8 +168,6 @@ std::vector<double> solver(HeatSource heatSource) {
         xi = i * dxi;
         r = r_from_xi(xi, r_s0, r_b0);
         for(int j = 0; j < M; j++){
-            theta = j * dth;
-
             rho_array[i][j] = G_prev[i][j].get_rho(r);
             p_array[i][j] = G_prev[i][j].get_p(r);
             u_array[i][j] = G_prev[i][j].get_u();
@@ -228,7 +225,7 @@ std::vector<double> solver(HeatSource heatSource) {
     psi0_out << "\n";
     psi1_out << "\n";
 
-    double dz, CFL = 0.9, lambda_xi, lambda_th;
+    double dz, CFL = 0.5, lambda_xi, lambda_th;
     double MM, mm, xi_z_val, xi_r_val, xi_theta_val;
     std::vector<double> z_array;
 
@@ -286,7 +283,6 @@ std::vector<double> solver(HeatSource heatSource) {
         }
         // Запас устойчивости (коэффициент CFL)
         dz *= CFL;
-
         // r_s_pred, r_s_theta_pred - для сохранения предыдущего значения (фазы предиктор-корректор)
         // r_s_z_prev - копия r_s_z, защищенная от изменений по ходу алгоритма
         std::vector<double> r_s_pred(M), r_s_theta_pred(M), r_s_z_prev(M);
@@ -294,9 +290,7 @@ std::vector<double> solver(HeatSource heatSource) {
         for(int step = 0; step < 2; step++){ // step = 0: predictor, step = 1: corrector
             // #pragma omp parallel for private(xi, theta, idx)
             for(int i = 0; i < N; i++){
-                xi = i * dxi;
                 // Граница theta = 0
-                theta = 0;
                 if(step == 0) { // predictor
                     idx = int(i == N - 1);
                     G_next[i][0] = predictor(
@@ -327,7 +321,6 @@ std::vector<double> solver(HeatSource heatSource) {
 
                 // Внутренние (по theta) узлы
                 for(int j = 1; j < M - 1; j++){
-                    theta = j*dth;
                     if(step == 0){ // predictor
                         idx = int(i == N - 1);
                         G_next[i][j] = predictor(
@@ -356,7 +349,6 @@ std::vector<double> solver(HeatSource heatSource) {
                 }
 
                 // Граница theta = Pi
-                theta = Pi;
                 if(step == 0){ // predictor
                     F_array F_mirrored = (-1) * F[i][M - 2];
                     F_mirrored[2] = (-1) * F_mirrored[2];
@@ -617,17 +609,7 @@ std::vector<double> solver(HeatSource heatSource) {
                     psi1[i] = psi1[i - 1] + rho_array[i][M - 1] * w_array[i][M - 1] * r * dr;
                 }
 
-                if(z_limit){
-                    if(z > z0 + double(k)/double(files_count)){
-                        for(int i = 0; i < N; i++){
-                            psi0_out << psi0[i] << " ";
-                            psi1_out << psi1[i] << " ";
-                        }
-                        psi0_out << "\n";
-                        psi1_out << "\n";
-                    }
-                }
-                else{
+                if(z > z0 + double(k)/double(files_count)){
                     for(int i = 0; i < N; i++){
                         psi0_out << psi0[i] << " ";
                         psi1_out << psi1[i] << " ";
@@ -671,8 +653,6 @@ std::vector<double> solver(HeatSource heatSource) {
             for(int i = 0; i < N; i++){
                 xi = i * dxi;
                 for(int j = 0; j < M; j++){
-                    theta = j * dth;
-                    r = r_from_xi(xi, r_s[j].back(), r_b(z));
                     E[i][j] = (
                         xi_r(r_s[j].back(), r_b(z))*E[i][j]
                         + xi_theta(xi, r_s[j].back(), r_b(z), r_s_theta[j].back())*F[i][j]
@@ -707,32 +687,9 @@ std::vector<double> solver(HeatSource heatSource) {
         // u_out << z << "\n";
         // v_out << z << "\n";
         // w_out << z << "\n";
-        if(z_limit){
-            if(z > z0 + double(k)/double(files_count)){
-                z_out << z << " ";
-                // std::cout << z << std::endl;
-                for(int i = 0; i < N; i++){
-                    for(int j = 0; j < M; j++)
-                    {
-                        rho_out << rho_array[i][j] << " ";
-                        p_out << p_array[i][j] << " ";
-                        u_out << u_array[i][j] << " ";
-                        v_out << v_array[i][j] << " ";
-                        w_out << w_array[i][j] << " ";
-                    }
-                    rho_out << "\n";
-                    p_out << "\n";
-                    u_out << "\n";
-                    v_out << "\n";
-                    w_out << "\n";
-                }
-                Fy_out << Fy << " ";
-                Mz_out << Mz << " ";   
-            }
-        }
-        else{
+
+        if(z > z0 + double(k)/double(files_count)){
             z_out << z << " ";
-            std::cout << z << std::endl;
             for(int i = 0; i < N; i++){
                 for(int j = 0; j < M; j++)
                 {
@@ -751,21 +708,8 @@ std::vector<double> solver(HeatSource heatSource) {
             Fy_out << Fy << " ";
             Mz_out << Mz << " ";
         }
-        
-        if(z_limit){
-            if(z > z0 + double(k)/double(files_count)){
-                for(int j = 0; j < M; j++){
-                    r_s_out << r_s[j].back() << " ";
-                    r_s_theta_out << r_s_theta[j].back() << " ";
-                    r_s_z_out << r_s_z[j].back() << " ";
-                }
-                r_s_out << "\n";
-                r_s_theta_out << "\n";
-                r_s_z_out << "\n";
-                k++;
-            }
-        }
-        else{
+
+        if(z > z0 + double(k)/double(files_count)){
             for(int j = 0; j < M; j++){
                 r_s_out << r_s[j].back() << " ";
                 r_s_theta_out << r_s_theta[j].back() << " ";
@@ -774,6 +718,7 @@ std::vector<double> solver(HeatSource heatSource) {
             r_s_out << "\n";
             r_s_theta_out << "\n";
             r_s_z_out << "\n";
+            k++;
         }
     }
     if(progress_bar)

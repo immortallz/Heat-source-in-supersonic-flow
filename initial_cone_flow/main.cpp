@@ -3,23 +3,24 @@
 int main()
 {
 	vector<double> v(2); //v[0] = V_R, v[1] = V_\theta
-	double p0 = 101330, rho0 = 1.2255, V1, beta, theta0, Mach0;
+	const double p0 = 101330;
+	double rho0 = 1.2255, Mach0;
 	double a0 = sqrt(gamma * p0 / rho0);
 	int theta0_int;
 	cout << "enter theta0 (in degrees)" << endl;
 	cin >> theta0_int;
 	cout << "enter initial Mach" << endl;
 	cin >> Mach0;
-	theta0 = double(theta0_int * PI / 180.0);
-	V1 = Mach0*a0;
-	double C = 			//Bernoulli constant
+	const double theta0 = theta0_int * PI / 180.0;
+	const double V1 = Mach0 * a0;
+	const double C = 			//Bernoulli constant
 		gamma/(gamma - 1) * p0 / rho0
 		+ 0.5*(V1*V1),
 		M = V1 / a0;
-	
-	beta = secant_method(p0, rho0, V1, theta0,
-	PI/6, PI/5,
-	0.00001, 1e-10
+
+	const double beta = secant_method(p0, rho0, V1, theta0,
+	                            PI / 6, PI / 5,
+	                            0.00001, 1e-10
 	);
 
 	cout << "Calculated shockwave angle: " << beta << " rad = " << beta / PI * 180.0 << " degrees" << endl;

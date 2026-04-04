@@ -36,7 +36,7 @@ BaseArray BaseArray::operator-(const BaseArray& other) const {
     return result;
 }
 
-BaseArray BaseArray::operator*(double scalar) const {
+BaseArray BaseArray::operator*(const double scalar) const {
     BaseArray result;
     for (int i = 0; i < SIZE; i++) {
         result.data[i] = this->data[i] * scalar;
@@ -44,15 +44,15 @@ BaseArray BaseArray::operator*(double scalar) const {
     return result;
 }
 
-BaseArray operator*(double scalar, const BaseArray& arr) {
+BaseArray operator*(const double scalar, const BaseArray& arr) {
     return arr * scalar;
 }
 
-double& BaseArray::operator[](std::size_t index) {
+double& BaseArray::operator[](const std::size_t index) {
     return data[index];
 }
 
-const double& BaseArray::operator[](std::size_t index) const {
+const double& BaseArray::operator[](const std::size_t index) const {
     return data[index];
 }
 
@@ -80,7 +80,7 @@ double BaseArray::get_w() const {
     return 0;
 }
 
-BaseArray::~BaseArray() {}
+BaseArray::~BaseArray() = default;
 
 void BaseArray::print() const {
     std::cout << "[ ";

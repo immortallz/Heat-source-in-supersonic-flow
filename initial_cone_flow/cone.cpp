@@ -144,29 +144,26 @@ vector<double> RK(double t0, double T, double h, vector<double> y0, string filen
 	return y; 
 }
 
-double secant_method(double p0, double rho0, double V1, double theta0,
+double secant_method(const double p0, const double rho0, const double V1, const double theta0,
 	double beta0, double beta1,
-	double h, double tol
+	const double h, const double tol
 	)
 {
 	vector<double> v(2), //v[0] = V_R, v[1] = V_\theta
 		sol(2);
-	double 
+	const double
 		C = 			//Bernoulli constant
 			gamma/(gamma - 1) * p0 / rho0
 			+ 0.5*(V1*V1),
 		a0 = sqrt(gamma * p0 / rho0),
-		M = V1 / a0,
-		rho1_rho2;
+		M = V1 / a0;
 
-	FILE *tmp;
-	string tmp_filename = "tmp.txt";
-	double tmp_beta;
+	const string tmp_filename = "tmp.txt";
 	double err0, err1 = 1;
 	while(abs(err1) > tol)
 	{
-		rho1_rho2 = (gamma - 1)/(gamma + 1)
-			+ 2 / ((gamma + 1) * M*M * sin(beta0)*sin(beta0));
+		double rho1_rho2 = (gamma - 1) / (gamma + 1)
+		                   + 2 / ((gamma + 1) * M * M * sin(beta0) * sin(beta0));
 		v[0] = V1 * cos(beta0);
 		v[1] = -rho1_rho2 * V1 * sin(beta0);
 		sol = RK(beta0, theta0, -h, v, tmp_filename, C);
@@ -179,7 +176,7 @@ double secant_method(double p0, double rho0, double V1, double theta0,
 		sol = RK(beta1, theta0, -h, v, tmp_filename, C);
 		err1 = sol[1];
 
-		tmp_beta = beta1 - err1 * (beta1 - beta0) / (err1 - err0);
+		const double tmp_beta = beta1 - err1 * (beta1 - beta0) / (err1 - err0);
 		beta0 = beta1;
 		beta1 = tmp_beta;
 	}
@@ -201,10 +198,8 @@ double newton_method(double p0, double rho0, double V1, double theta0,
 		M = V1 / a0,
 		rho1_rho2;
 
-	FILE *tmp;
-	string tmp_filename = "tmp.txt";
-	double tmp_beta;
-	double err0 = 1, err1;
+	const string tmp_filename = "tmp.txt";
+	double err0 = 1;
 	while(abs(err0) > tol)
 	{
 		rho1_rho2 = (gamma - 1)/(gamma + 1)
@@ -214,7 +209,7 @@ double newton_method(double p0, double rho0, double V1, double theta0,
 		sol = RK(beta0, theta0, -h, v, tmp_filename, C);
 		err0 = sol[1];
 		sol = RK(beta0 + h, theta0, -h, v, tmp_filename, C);
-		err1 = sol[1];
+		const double err1 = sol[1];
 
 		beta0 = beta0 - err0 * h / (err1 - err0);
 	}

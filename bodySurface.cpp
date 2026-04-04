@@ -1,6 +1,6 @@
 #include "r.h"
 
-double r_b(double z) {
+double r_b(const double z) {
     switch (bodyParams.bodyType)
     {
         case BodyType::Cylindrical:
@@ -13,7 +13,7 @@ double r_b(double z) {
             return tan(Pi / 12.0) * sqrt(2*z - 1);
 
         case BodyType::DoubleCone: {
-            double k = 0.01;
+            constexpr double k = 0.01;      // coefficient of cone-to-cylinder approximation
             return tan(Pi / 12.0) + k * (z - 1.0);
         }
 
@@ -22,7 +22,7 @@ double r_b(double z) {
     }
 }
 
-double r_b_z(double z) {
+double r_b_z(const double z) {
     double dz = 1e-12;
     return (r_b(z + dz) - r_b(z - dz)) / dz * 0.5;
 }

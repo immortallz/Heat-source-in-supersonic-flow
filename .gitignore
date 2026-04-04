@@ -12,3 +12,6 @@ cone17.f90
 *.gif
 *.json
 .gitignore
+.idea/
+*.DS_Store
+project

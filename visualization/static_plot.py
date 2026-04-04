@@ -6,15 +6,16 @@ def r_b(z):
     return np.tan(np.pi/12) * np.sqrt(2*z - 1)
 
 def load_all():
-    zs = np.loadtxt('z_out.txt')
+    data_root_path = '../output_results'
+    zs = np.loadtxt(data_root_path + 'z_out.txt')
     K = zs.size
     N, M = 200, 600
-    rho = np.loadtxt('rho_out.txt').reshape(K,N,M)
-    p   = np.loadtxt('p_out.txt').reshape(K,N,M)
-    u   = np.loadtxt('u_out.txt').reshape(K,N,M)
-    v   = np.loadtxt('v_out.txt').reshape(K,N,M)
-    w   = np.loadtxt('w_out.txt').reshape(K,N,M)
-    rs  = np.loadtxt('r_s_out.txt')   # shape (K,M)
+    rho = np.loadtxt(data_root_path + 'rho_out.txt').reshape(K,N,M)
+    p   = np.loadtxt(data_root_path + 'p_out.txt').reshape(K,N,M)
+    u   = np.loadtxt(data_root_path + 'u_out.txt').reshape(K,N,M)
+    v   = np.loadtxt(data_root_path + 'v_out.txt').reshape(K,N,M)
+    w   = np.loadtxt(data_root_path + 'w_out.txt').reshape(K,N,M)
+    rs  = np.loadtxt(data_root_path + 'r_s_out.txt')   # shape (K,M)
     return zs, rho, p, u, v, w, rs
 
 def main():

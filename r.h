@@ -5,7 +5,6 @@
 #include <vector>
 #include <iostream>
 #include <fstream>
-#include <omp.h>
 #include <ctime>
 
 constexpr double Gamma = 1.4;
@@ -65,14 +64,14 @@ std::vector<T> operator*(T scalar, const std::vector<T>& vec);
 
 class BaseArray {
 	protected:
-		static const int SIZE = 5;
+		static constexpr int SIZE = 5;
 	public:
-		std::array<double, SIZE> data;
+		std::array<double, SIZE> data{};
 		
 		BaseArray();
 		BaseArray(const std::initializer_list<double>& list);
-	
-		BaseArray& operator=(const BaseArray& other);
+
+		virtual BaseArray& operator=(const BaseArray& other);
 		BaseArray operator+(const BaseArray& other) const;
 		BaseArray operator-(const BaseArray& other) const;
 		BaseArray operator*(double scalar) const;
@@ -99,7 +98,7 @@ public:
 	E_array();
 	E_array(const BaseArray& base);
 	E_array(const std::initializer_list<double>& list);
-	E_array& operator=(const BaseArray& other);
+	E_array& operator=(const BaseArray& other) override;
 };
 
 class F_array : public BaseArray {
@@ -107,7 +106,7 @@ public:
 	F_array();
 	F_array(const BaseArray& base);
 	F_array(const std::initializer_list<double>& list);
-	F_array& operator=(const BaseArray& other);
+	F_array& operator=(const BaseArray& other) override;
 };
 
 class G_array : public BaseArray {
@@ -115,7 +114,7 @@ public:
 	G_array();
 	G_array(const BaseArray& base);
 	G_array(const std::initializer_list<double>& list);
-	G_array& operator=(const BaseArray& other);
+	G_array& operator=(const BaseArray& other) override;
 	double get_alpha() const;
 	double get_rho(double r) const override;
 	double get_p(double r) const override;
@@ -129,14 +128,26 @@ public:
 	R_array();
 	R_array(const BaseArray& base);
 	R_array(const std::initializer_list<double>& list);
-	R_array& operator=(const BaseArray& other);
+	R_array& operator=(const BaseArray& other) override;
 };
 
-G_array predictor(E_array Em, E_array Ep, F_array Fm, F_array Fp, G_array G, R_array R, double dr, double dth, double dz);
-G_array corrector(E_array Em, E_array Ep, F_array Fm, F_array Fp, G_array Gm, G_array Gp, R_array R, double dr, double dth, double dz);
-E_array get_E(G_array G, double r);
-F_array get_F(G_array G, double r);
-R_array get_R(G_array G, double r, double q);
+G_array predictor(
+	const E_array& Em, const E_array& Ep,
+	const F_array& Fm, const F_array& Fp,
+	const G_array &G,
+	const R_array& R,
+	double dr, double dth, double dz);
+
+G_array corrector(
+	const E_array& Em, const E_array& Ep,
+	const F_array& Fm, const F_array& Fp,
+	const G_array& Gm, const G_array& Gp,
+	const R_array& R,
+	double dr, double dth, double dz);
+
+E_array get_E(const G_array& G, double r);
+F_array get_F(const G_array& G, double r);
+R_array get_R(const G_array& G, double r, double q);
 
 double r_from_xi(double xi, double r_s, double r_b);
 double r_b(double z);
@@ -144,7 +155,7 @@ double r_b_z(double z);
 double xi_r(double r_s, double r_b);
 double xi_theta(double xi, double r_s, double r_b, double r_s_theta);
 double xi_z(double xi, double r_s, double r_b, double r_s_z, double r_b_z);
-double q(double r, double theta, double z, HeatSource heatSource, bool is_adiabatic);
+double q(double r, double theta, double z, const HeatSource &heatSource, bool is_adiabatic);
 double lambda_r(double rho, double p, double u, double v, double w);
 
 std::vector<double> solver(HeatSource heatSource);

@@ -5,13 +5,14 @@ from matplotlib.animation import FuncAnimation
 # --- Общие
 def r_b(z): return np.tan(np.pi/12) * np.sqrt(2*z - 1)
 def load_all():
-    zs = np.loadtxt('z_out.txt')
+    data_root_path = '../output_results'
+    zs = np.loadtxt(data_root_path + 'z_out.txt')
     K=zs.size
     N,M=200,600
-    rho = np.loadtxt('rho_out.txt').reshape(K,N,M)
-    p,u,v,w = [np.loadtxt(f).reshape(K,N,M) for f in 
+    rho = np.loadtxt(data_root_path + 'rho_out.txt').reshape(K,N,M)
+    p,u,v,w = [np.loadtxt(data_root_path + f).reshape(K,N,M) for f in
         ('p_out.txt','u_out.txt','v_out.txt','w_out.txt')]
-    rs = np.loadtxt('r_s_out.txt')
+    rs = np.loadtxt(data_root_path + 'r_s_out.txt')
     return zs, rho,p,u,v,w, rs
 
 def make_full_circle(data, odd):
