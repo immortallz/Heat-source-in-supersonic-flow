@@ -286,30 +286,28 @@ std::vector<double> solver(HeatSource heatSource) {
         // r_s_pred, r_s_theta_pred - для сохранения предыдущего значения (фазы предиктор-корректор)
         // r_s_z_prev - копия r_s_z, защищенная от изменений по ходу алгоритма
         std::vector<double> r_s_pred(M), r_s_theta_pred(M), r_s_z_prev(M);
-        int idx;
         for(int step = 0; step < 2; step++){ // step = 0: predictor, step = 1: corrector
             // #pragma omp parallel for private(xi, theta, idx)
             for(int i = 0; i < N; i++){
                 // Граница theta = 0
                 if(step == 0) { // predictor
-                    idx = int(i == N - 1);
+                    FluxPair pair = get_fluxes(E, i, 0, numericalParams.flux_scheme, true);
                     G_next[i][0] = predictor(
-                        E[i - idx][0],
-                        E[i + 1 - idx][0],
+                        pair.E_left,
+                        pair.E_right,
                         F[i][0],
                         F[i][1],
                         G_prev[i][0],
                         R[i][0],
-                        dxi, dth, dz
-                    );
+                        dxi, dth, dz);
                 }
                 else { //corrector
                     F_array F_mirrored = (-1) * F[i][1];
                     F_mirrored[2] = (-1) * F_mirrored[2];
-                    idx = int(i == 0);
+                    FluxPair pair = get_fluxes(E, i, 0, numericalParams.flux_scheme,false);
                     G_next[i][0] = corrector(
-                        E[i - 1 + idx][0],
-                        E[i + idx][0],
+                        pair.E_left,
+                        pair.E_right,
                         F_mirrored, // симметрия (у вектора F 1, 2, 4, 5 компоненты нечетны по theta, 3 - четна)
                         F[i][0],
                         G_prev[i][0],
@@ -321,11 +319,11 @@ std::vector<double> solver(HeatSource heatSource) {
 
                 // Внутренние (по theta) узлы
                 for(int j = 1; j < M - 1; j++){
-                    if(step == 0){ // predictor
-                        idx = int(i == N - 1);
+                    if(step == 0) { // predictor
+                        FluxPair pair = get_fluxes(E, i, j, numericalParams.flux_scheme,true);
                         G_next[i][j] = predictor(
-                            E[i - idx][j],
-                            E[i + 1 - idx][j],
+                            pair.E_left,
+                            pair.E_right,
                             F[i][j],
                             F[i][j + 1],
                             G_prev[i][j],
@@ -334,10 +332,10 @@ std::vector<double> solver(HeatSource heatSource) {
                         );
                     }
                     else{ //corrector
-                        idx = int(i == 0);
+                        FluxPair pair = get_fluxes(E, i, j, numericalParams.flux_scheme,false);
                         G_next[i][j] = corrector(
-                            E[i - 1 + idx][j],
-                            E[i + idx][j],
+                            pair.E_left,
+                            pair.E_right,
                             F[i][j - 1],
                             F[i][j],
                             G_prev[i][j],
@@ -349,25 +347,24 @@ std::vector<double> solver(HeatSource heatSource) {
                 }
 
                 // Граница theta = Pi
-                if(step == 0){ // predictor
+                if(step == 0) { // predictor
                     F_array F_mirrored = (-1) * F[i][M - 2];
                     F_mirrored[2] = (-1) * F_mirrored[2];
-                    idx = int(i == N - 1);
+                        FluxPair pair = get_fluxes(E, i, M - 1, numericalParams.flux_scheme, true);
                     G_next[i][M - 1] = predictor(
-                        E[i - idx][M - 1],
-                        E[i + 1 - idx][M - 1],
+                        pair.E_left,
+                        pair.E_right,
                         F[i][M - 1],
                         F_mirrored, // симметрия
                         G_prev[i][M - 1],
                         R[i][M - 1],
                         dxi, dth, dz
                     );
-                }
-                else{ // corrector
-                    idx = int(i == 0);
+                } else { // corrector
+                    FluxPair pair = get_fluxes(E, i, M - 1, numericalParams.flux_scheme,false);
                     G_next[i][M - 1] = corrector(
-                        E[i - 1 + idx][M - 1],
-                        E[i + idx][M - 1],
+                        pair.E_left,
+                        pair.E_right,
                         F[i][M - 2],
                         F[i][M - 1],
                         G_prev[i][M - 1],

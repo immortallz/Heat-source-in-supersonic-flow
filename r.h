@@ -17,6 +17,11 @@ enum class BodyType {
 	DoubleCone
 };
 
+enum class FluxScheme {
+	Central,
+	BeamWarming
+};
+
 struct FlowParams {
     double Mach_inf;
     double p_inf;
@@ -37,6 +42,7 @@ struct NumericalParams {
 	int M; // theta coordinate nodes count
 	int num_step_percent;
 	int files_count;
+	FluxScheme flux_scheme;
 };
 
 struct HeatSource {
@@ -101,6 +107,10 @@ public:
 	E_array& operator=(const BaseArray& other) override;
 };
 
+struct FluxPair {
+	E_array E_left, E_right;
+};
+
 class F_array : public BaseArray {
 public:
 	F_array();
@@ -157,5 +167,6 @@ double xi_theta(double xi, double r_s, double r_b, double r_s_theta);
 double xi_z(double xi, double r_s, double r_b, double r_s_z, double r_b_z);
 double q(double r, double theta, double z, const HeatSource &heatSource, bool is_adiabatic);
 double lambda_r(double rho, double p, double u, double v, double w);
+FluxPair get_fluxes(const std::vector<std::vector<E_array>>& E, int i, int j, FluxScheme scheme, bool is_predictor);
 
 std::vector<double> solver(HeatSource heatSource);

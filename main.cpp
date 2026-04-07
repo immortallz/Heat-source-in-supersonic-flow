@@ -1,4 +1,5 @@
 #include "r.h"
+#include <string>
 #include <nlohmann/json.hpp>
 
 using json = nlohmann::json;
@@ -100,7 +101,7 @@ std::string get_body_type_path() {
 
 void force_and_momentum_by_heat_location(int N_z, int N_r, double L = 0.02, double Q = 1.0/20.0)
 {
-    std::string basePath = "heat_source_variation/" + get_body_type_path() + "/Q_" + std::to_string(Q) + "/";
+    std::string basePath = "heat_source_variation/" + get_body_type_path() + "/Q_" + std::to_string(Q).substr(0, 4) + "/";
     std::ofstream
         Fy_out(basePath + "Fy_out_heat.txt"),
         Mz_out(basePath + "Mz_out_heat.txt"),
@@ -160,6 +161,7 @@ void save_params()
     numericalJson["M"] = numericalParams.M;
     numericalJson["num_step_percent"] = numericalParams.num_step_percent;
     numericalJson["files_count"] = numericalParams.files_count;
+    numericalJson["flux_scheme"] = numericalParams.flux_scheme;
 
     std::ofstream
         flowFile("parameters/flowParams.json"),
@@ -182,12 +184,13 @@ int main()
 
     bodyParams.transitionPoint = 1.0; // not recommended to change, works bad on other values yet
     bodyParams.bodyLength = 2.0;
-    bodyParams.bodyType = BodyType::Parabolic;
+    bodyParams.bodyType = BodyType::DoubleCone;
 
     numericalParams.N = 200;
     numericalParams.M = 600;
     numericalParams.num_step_percent = 100;
     numericalParams.files_count = 100;
+    numericalParams.flux_scheme = FluxScheme::Central;
 
     heatSource.x = 0.4; // distance from body symmetry axis to heat source i.e. radial distance
     heatSource.y = 0.0; // do not change this because we assume source is located in theta=0 plane
@@ -198,25 +201,27 @@ int main()
     // tan(pi / 12) ~ 0.26794919243
 
     const clock_t start = clock();
-    // const std::vector<double> res = solver(heatSource);
-    // std::cout << "Fy = " << res[0] << std::endl;
-    // std::cout << "Mz = " << res[1] << std::endl;
-    // std::cout << "Q (total) = " << res[2] << std::endl;
-    // save_params();
 
-    numericalParams.N = 200;
-    numericalParams.M = 600;
-    numericalParams.num_step_percent = 1;
-    numericalParams.files_count = 1;
+    const std::vector<double> res = solver(heatSource);
+    std::cout << "Fy = " << res[0] << std::endl;
+    std::cout << "Mz = " << res[1] << std::endl;
+    std::cout << "Q (total) = " << res[2] << std::endl;
 
-    bodyParams.bodyType = BodyType::DoubleCone;
+    save_params();
 
-    force_and_momentum_by_heat_location(20, 20, 0.02, 0.25);
-    force_and_momentum_by_heat_location(20, 20, 0.02, 0.05);
-
-    bodyParams.bodyType = BodyType::Parabolic;
-
-    force_and_momentum_by_heat_location(20, 20, 0.02, 0.05);
+    // numericalParams.N = 200;
+    // numericalParams.M = numericalParams.N * 3;
+    // numericalParams.num_step_percent = 1;
+    // numericalParams.files_count = 1;
+    //
+    // bodyParams.bodyType = BodyType::DoubleCone;
+    //
+    // force_and_momentum_by_heat_location(20, 20, 0.02, 0.25);
+    // force_and_momentum_by_heat_location(20, 20, 0.02, 0.05);
+    //
+    // bodyParams.bodyType = BodyType::Parabolic;
+    //
+    // force_and_momentum_by_heat_location(20, 20, 0.02, 0.05);
 
     const clock_t finish = clock();
     const double seconds = static_cast<double>(finish - start) / CLOCKS_PER_SEC;

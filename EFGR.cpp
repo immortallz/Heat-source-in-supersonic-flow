@@ -152,3 +152,41 @@ R_array get_R(const G_array& G, const double r, const double q) {
     };
     return result;
 }
+
+FluxPair get_fluxes(const std::vector<std::vector<E_array>>& E, int i, int j, const FluxScheme scheme, bool is_predictor) {
+    FluxPair flux;
+
+    if (scheme == FluxScheme::BeamWarming) {
+        if (is_predictor && i == numericalParams.N - 1) {
+            // Right boundary predictor - upwind from left
+            flux.E_left = E[i][j];
+            flux.E_right = 3*E[i][j] - 3*E[i-1][j] + E[i-2][j];
+        } else if (!is_predictor && i == 0) {
+            // Left boundary corrector - upwind from right
+            flux.E_left = 3*E[i][j] - 3*E[i+1][j] + E[i+2][j];
+            flux.E_right = E[i][j];
+        } else {
+            // Standard case
+            if (is_predictor) {
+                flux.E_left = E[i][j];
+                flux.E_right = E[i + 1][j];
+            } else {
+                flux.E_left = E[i - 1][j];
+                flux.E_right = E[i][j];
+            }
+        }
+    } else {
+        // Central difference
+        if (is_predictor) {
+            int idx = int(i == numericalParams.N - 1);
+            flux.E_left = E[i - idx][j];
+            flux.E_right = E[i + 1 - idx][j];
+        } else {
+            int idx = int(i == 0);
+            flux.E_left = E[i - 1 + idx][j];
+            flux.E_right = E[i + idx][j];
+        }
+    }
+
+    return flux;
+}
