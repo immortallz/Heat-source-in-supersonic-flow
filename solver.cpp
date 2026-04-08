@@ -31,7 +31,7 @@ std::vector<double> solver(HeatSource heatSource) {
         r_b0, r_b_z0,
         r_s0, r_s_z0,
         dxi = 1 / static_cast<double>(N - 1),
-        dth = Pi / static_cast<double>(M - 1),
+        dth = PI / static_cast<double>(M - 1),
         rho, p, u, v, w;
 
     double Q = 0; // integral of q(r,theta,z)dr*dtheta*dz по всей расчетной области
@@ -42,7 +42,9 @@ std::vector<double> solver(HeatSource heatSource) {
         G_prev(N, std::vector<G_array>(M)),
         G_next(N, std::vector<G_array>(M));
     std::vector<std::vector<R_array>> R(N, std::vector<R_array>(M));
-    
+
+    std::vector<std::vector<E_array>> E_prev(3, std::vector<E_array>(M));
+
     std::vector<std::vector<double>>
         rho_array(N, std::vector<double>(M)),
         p_array(N, std::vector<double>(M)),
@@ -126,14 +128,13 @@ std::vector<double> solver(HeatSource heatSource) {
         w = VR_cone[idx_phi]*cos(phi_cone[idx_phi]) - Vphi_cone[idx_phi]*sin(phi_cone[idx_phi]);
 
         // Инициализация + Нормализация вектор-функций
-        for(int j = 0; j < M; j++)
-        {
+        for(int j = 0; j < M; j++) {
             theta = j * dth;
             G_prev[i][j].data[0] = rho*w;
             G_prev[i][j].data[1] = rho*u*w;
             G_prev[i][j].data[2] = rho*v*w;
             G_prev[i][j].data[3] = rho*w*w + p;
-            G_prev[i][j].data[4] = w * (Gamma * p / (Gamma - 1) + rho*(u*u + v*v + w*w)*0.5);
+            G_prev[i][j].data[4] = w * (GAMMA * p / (GAMMA - 1) + rho*(u*u + v*v + w*w)*0.5);
             
             G_prev[i][j] = G_prev[i][j] * r;
 
@@ -253,7 +254,7 @@ std::vector<double> solver(HeatSource heatSource) {
                 xi_theta_val = xi_theta(xi, r_s[j].back(), r_b(z), r_s_theta[j].back());
                 xi_z_val = xi_z(xi, r_s[j].back(), r_b(z), r_s_z[j].back(), r_b_z(z));
                 
-                double a = sqrt(Gamma * p_array[i][j] / rho_array[i][j]);
+                double a = sqrt(GAMMA * p_array[i][j] / rho_array[i][j]);
                 MM = w_array[i][j] / a;
                 mm = (
                     u_array[i][j]*xi_r_val
@@ -283,15 +284,23 @@ std::vector<double> solver(HeatSource heatSource) {
         }
         // Запас устойчивости (коэффициент CFL)
         dz *= CFL;
+        if (z + dz >= L) {
+            dz = L - z;
+        }
         // r_s_pred, r_s_theta_pred - для сохранения предыдущего значения (фазы предиктор-корректор)
         // r_s_z_prev - копия r_s_z, защищенная от изменений по ходу алгоритма
         std::vector<double> r_s_pred(M), r_s_theta_pred(M), r_s_z_prev(M);
         for(int step = 0; step < 2; step++){ // step = 0: predictor, step = 1: corrector
+            if (step == 0 && numericalParams.flux_scheme == FluxScheme::BeamWarming) {
+                for(int i = 0; i < 3; i++) {
+                    for(int j = 0; j < M; j++) {
+                        E_prev[i][j] = E[i][j];}}
+            }
             // #pragma omp parallel for private(xi, theta, idx)
             for(int i = 0; i < N; i++){
                 // Граница theta = 0
                 if(step == 0) { // predictor
-                    FluxPair pair = get_fluxes(E, i, 0, numericalParams.flux_scheme, true);
+                    FluxPair pair = get_fluxes(E, E_prev, i, 0, numericalParams.flux_scheme, true);
                     G_next[i][0] = predictor(
                         pair.E_left,
                         pair.E_right,
@@ -304,7 +313,7 @@ std::vector<double> solver(HeatSource heatSource) {
                 else { //corrector
                     F_array F_mirrored = (-1) * F[i][1];
                     F_mirrored[2] = (-1) * F_mirrored[2];
-                    FluxPair pair = get_fluxes(E, i, 0, numericalParams.flux_scheme,false);
+                    FluxPair pair = get_fluxes(E, E_prev, i, 0, numericalParams.flux_scheme,false);
                     G_next[i][0] = corrector(
                         pair.E_left,
                         pair.E_right,
@@ -320,7 +329,7 @@ std::vector<double> solver(HeatSource heatSource) {
                 // Внутренние (по theta) узлы
                 for(int j = 1; j < M - 1; j++){
                     if(step == 0) { // predictor
-                        FluxPair pair = get_fluxes(E, i, j, numericalParams.flux_scheme,true);
+                        FluxPair pair = get_fluxes(E, E_prev, i, j, numericalParams.flux_scheme,true);
                         G_next[i][j] = predictor(
                             pair.E_left,
                             pair.E_right,
@@ -332,7 +341,7 @@ std::vector<double> solver(HeatSource heatSource) {
                         );
                     }
                     else{ //corrector
-                        FluxPair pair = get_fluxes(E, i, j, numericalParams.flux_scheme,false);
+                        FluxPair pair = get_fluxes(E, E_prev, i, j, numericalParams.flux_scheme,false);
                         G_next[i][j] = corrector(
                             pair.E_left,
                             pair.E_right,
@@ -350,7 +359,7 @@ std::vector<double> solver(HeatSource heatSource) {
                 if(step == 0) { // predictor
                     F_array F_mirrored = (-1) * F[i][M - 2];
                     F_mirrored[2] = (-1) * F_mirrored[2];
-                        FluxPair pair = get_fluxes(E, i, M - 1, numericalParams.flux_scheme, true);
+                        FluxPair pair = get_fluxes(E, E_prev, i, M - 1, numericalParams.flux_scheme, true);
                     G_next[i][M - 1] = predictor(
                         pair.E_left,
                         pair.E_right,
@@ -361,7 +370,7 @@ std::vector<double> solver(HeatSource heatSource) {
                         dxi, dth, dz
                     );
                 } else { // corrector
-                    FluxPair pair = get_fluxes(E, i, M - 1, numericalParams.flux_scheme,false);
+                    FluxPair pair = get_fluxes(E, E_prev, i, M - 1, numericalParams.flux_scheme,false);
                     G_next[i][M - 1] = corrector(
                         pair.E_left,
                         pair.E_right,
@@ -415,8 +424,9 @@ std::vector<double> solver(HeatSource heatSource) {
             }
             // Добавление шага dz только после предиктора,
             // так как на корректоре не происходит фактического шага
-            if(step == 0)
+            if(step == 0) {
                 z += dz;
+            }
 
             // Восстановление векторов E, F, R и физических величин
             // #pragma omp parallel for private(xi, theta, r)
@@ -454,7 +464,7 @@ std::vector<double> solver(HeatSource heatSource) {
                 }
                 
                 // Граница theta = Pi
-                theta = Pi;
+                theta = PI;
                 r = r_from_xi(xi, r_s[M - 1].back(), r_b(z));
                 E[i][M - 1] = get_E(G_next[i][M - 1], r);
                 F[i][M - 1] = get_F(G_next[i][M - 1], r);
@@ -485,7 +495,7 @@ std::vector<double> solver(HeatSource heatSource) {
                     )
                     /
                     (
-                        Gamma * p_array[0][j] / rho_array[0][j]
+                        GAMMA * p_array[0][j] / rho_array[0][j]
                     )
                 );
 
@@ -499,20 +509,20 @@ std::vector<double> solver(HeatSource heatSource) {
 
                 // Поправка давления
                 p_array[0][j] = p_array[0][j] * (
-                    1 - Gamma*Mach*Mach*delta_th/sqrt(Mach*Mach - 1)
-                    + Gamma
+                    1 - GAMMA*Mach*Mach*delta_th/sqrt(Mach*Mach - 1)
+                    + GAMMA
                         * Mach
-                        * ((Gamma + 1)*Mach*Mach*Mach*Mach - 4*(Mach*Mach - 1))
+                        * ((GAMMA + 1)*Mach*Mach*Mach*Mach - 4*(Mach*Mach - 1))
                         / (4*(Mach*Mach - 1)*(Mach*Mach - 1))
                         * delta_th * delta_th
                 );
 
                 //Поправка плотности
-                rho_array[0][j] = flowParams.rho_inf * pow(p_array[0][j] / flowParams.p_inf, 1/Gamma);
+                rho_array[0][j] = flowParams.rho_inf * pow(p_array[0][j] / flowParams.p_inf, 1/GAMMA);
 
                 // Полная энтальпия и модуль скорости из интеграла Бернулли
-                double H = Gamma/(Gamma - 1) * flowParams.p_inf/flowParams.rho_inf + 0.5*flowParams.V_inf*flowParams.V_inf;
-                double V_abs = sqrt(2*(H - Gamma/(Gamma - 1) * p_array[0][j]/rho_array[0][j]));
+                double H = GAMMA/(GAMMA - 1) * flowParams.p_inf/flowParams.rho_inf + 0.5*flowParams.V_inf*flowParams.V_inf;
+                double V_abs = sqrt(2*(H - GAMMA/(GAMMA - 1) * p_array[0][j]/rho_array[0][j]));
     
                 double Vr_tau, Vth_tau, Vz_tau;
                 // Касательная компонента скорости V_tau:
@@ -539,12 +549,12 @@ std::vector<double> solver(HeatSource heatSource) {
                 // Плотность из условия Ранкина-Гюгонио
                 rho_array[N - 1][j] = (
                     flowParams.rho_inf
-                    * ((Gamma + 1)*p_array[N - 1][j] + (Gamma - 1)*flowParams.p_inf)
-                    / ((Gamma + 1)*flowParams.p_inf + (Gamma - 1)*p_array[N - 1][j])
+                    * ((GAMMA + 1)*p_array[N - 1][j] + (GAMMA - 1)*flowParams.p_inf)
+                    / ((GAMMA + 1)*flowParams.p_inf + (GAMMA - 1)*p_array[N - 1][j])
                 );
                 // Корень с отрицательным знаком, так как нормаль берется внешняя
                 double V_inf_n = -sqrt(
-                    ((Gamma + 1)*p_array[N - 1][j] + (Gamma - 1)*flowParams.p_inf)
+                    ((GAMMA + 1)*p_array[N - 1][j] + (GAMMA - 1)*flowParams.p_inf)
                     / (2 * flowParams.rho_inf)
                 );
                 double V_n = flowParams.rho_inf / rho_array[N - 1][j] * V_inf_n;
@@ -606,7 +616,7 @@ std::vector<double> solver(HeatSource heatSource) {
                     psi1[i] = psi1[i - 1] + rho_array[i][M - 1] * w_array[i][M - 1] * r * dr;
                 }
 
-                if(z > z0 + double(k)/double(files_count)){
+                if(z > z0 + double(k)/double(files_count) || z >= L){
                     for(int i = 0; i < N; i++){
                         psi0_out << psi0[i] << " ";
                         psi1_out << psi1[i] << " ";
@@ -617,9 +627,9 @@ std::vector<double> solver(HeatSource heatSource) {
             }
     
             //Поправка векторов E, F, G, R на границах
-            for(int i = 0; i < N; i += N - 1){
+            for(int i = 0; i < N; i += N - 1) {
                 xi = i * dxi;
-                for(int j = 0; j < M; j++){
+                for(int j = 0; j < M; j++) {
                     theta = j * dth;
                     r = r_from_xi(xi, r_s[j].back(), r_b(z));
 
@@ -630,7 +640,7 @@ std::vector<double> solver(HeatSource heatSource) {
                     G_next[i][j].data[4] = (
                         w_array[i][j]
                         * (
-                            Gamma * p_array[i][j] / (Gamma - 1) 
+                            GAMMA * p_array[i][j] / (GAMMA - 1)
                             + rho_array[i][j]*(
                                 u_array[i][j]*u_array[i][j]
                                 + v_array[i][j]*v_array[i][j]
@@ -685,7 +695,7 @@ std::vector<double> solver(HeatSource heatSource) {
         // v_out << z << "\n";
         // w_out << z << "\n";
 
-        if(z > z0 + double(k)/double(files_count)){
+        if(z > z0 + double(k)/double(files_count) || z >= L) {
             z_out << z << " ";
             for(int i = 0; i < N; i++){
                 for(int j = 0; j < M; j++)
@@ -706,7 +716,7 @@ std::vector<double> solver(HeatSource heatSource) {
             Mz_out << Mz << " ";
         }
 
-        if(z > z0 + double(k)/double(files_count)){
+        if(z > z0 + double(k)/double(files_count) || z >= L) {
             for(int j = 0; j < M; j++){
                 r_s_out << r_s[j].back() << " ";
                 r_s_theta_out << r_s_theta[j].back() << " ";

@@ -7,8 +7,8 @@
 #include <fstream>
 #include <ctime>
 
-constexpr double Gamma = 1.4;
-constexpr double Pi = 3.141592653589793;
+constexpr double GAMMA = 1.4;
+constexpr double PI = 3.141592653589793;
 
 enum class BodyType {
     Cylindrical,
@@ -18,7 +18,7 @@ enum class BodyType {
 };
 
 enum class FluxScheme {
-	Central,
+	MacCormack,
 	BeamWarming
 };
 
@@ -167,6 +167,9 @@ double xi_theta(double xi, double r_s, double r_b, double r_s_theta);
 double xi_z(double xi, double r_s, double r_b, double r_s_z, double r_b_z);
 double q(double r, double theta, double z, const HeatSource &heatSource, bool is_adiabatic);
 double lambda_r(double rho, double p, double u, double v, double w);
-FluxPair get_fluxes(const std::vector<std::vector<E_array>>& E, int i, int j, FluxScheme scheme, bool is_predictor);
+FluxPair get_fluxes(
+	const std::vector<std::vector<E_array>>& E,
+	const std::vector<std::vector<E_array>>& E_prev,
+	int i, int j, FluxScheme scheme, bool is_predictor);
 
 std::vector<double> solver(HeatSource heatSource);

@@ -35,20 +35,20 @@ void test()
     E.data[1] = rho*u*u + p;
     E.data[2] = rho*u*v;
     E.data[3] = rho*u*w;
-    E.data[4] = u * (Gamma * p / (Gamma - 1) + rho*(u*u + v*v + w*w)*0.5);
+    E.data[4] = u * (GAMMA * p / (GAMMA - 1) + rho*(u*u + v*v + w*w)*0.5);
     E = r * E;
 
     F.data[0] = rho*v;
     F.data[1] = rho*u*v;
     F.data[2] = rho*v*v + p;
     F.data[3] = rho*v*w;
-    F.data[4] = v * (Gamma * p / (Gamma - 1) + rho*(u*u + v*v + w*w)*0.5);
+    F.data[4] = v * (GAMMA * p / (GAMMA - 1) + rho*(u*u + v*v + w*w)*0.5);
 
     G.data[0] = rho*w;
     G.data[1] = rho*u*w;
     G.data[2] = rho*v*w;
     G.data[3] = rho*w*w + p;
-    G.data[4] = w * (Gamma * p / (Gamma - 1) + rho*(u*u + v*v + w*w)*0.5);
+    G.data[4] = w * (GAMMA * p / (GAMMA - 1) + rho*(u*u + v*v + w*w)*0.5);
     G = r * G;
 
     R.data[0] = 0;
@@ -116,7 +116,7 @@ void force_and_momentum_by_heat_location(int N_z, int N_r, double L = 0.02, doub
 
     for (int i = 0; i < N_z + 1; i++) {
         r = r_b(z);
-        h_r = (tan(Pi / 12.0)*2.0 - r_b(z)) / N_r;
+        h_r = (tan(PI / 12.0)*2.0 - r_b(z)) / N_r;
         for (int j = 0; j < N_r + 1; j++) {
             HeatSource src {r, 0, z, L, Q};
             result = solver(src);
@@ -148,7 +148,7 @@ std::string to_string(const BodyType type) {
 
 void save_params()
 {
-    json flowJson, bodyJson, numericalJson;
+    json flowJson, bodyJson, numericalJson, heatSourceJson;
     flowJson["Mach_inf"] = flowParams.Mach_inf;
     flowJson["p_inf"] = flowParams.p_inf;
     flowJson["rho_inf"] = flowParams.rho_inf;
@@ -163,14 +163,22 @@ void save_params()
     numericalJson["files_count"] = numericalParams.files_count;
     numericalJson["flux_scheme"] = numericalParams.flux_scheme;
 
+    heatSourceJson["x"] = heatSource.x;
+    heatSourceJson["y"] = heatSource.y;
+    heatSourceJson["z"] = heatSource.z;
+    heatSourceJson["L"] = heatSource.L;
+    heatSourceJson["Q"] = heatSource.Q;
+
     std::ofstream
         flowFile("parameters/flowParams.json"),
         bodyFile("parameters/bodyParams.json"),
-        numericalFile("parameters/numericalParams.json");
+        numericalFile("parameters/numericalParams.json"),
+        heatSourceFile("parameters/heatSourceParams.json");
 
     flowFile << flowJson.dump(4); // красиво с отступами
     bodyFile << bodyJson.dump(4);
     numericalFile << numericalJson.dump(4);
+    heatSourceFile << heatSourceJson.dump(4);
 }
 
 int main()
@@ -178,19 +186,21 @@ int main()
     flowParams.Mach_inf = 3;
     flowParams.p_inf = 101330;
     flowParams.rho_inf = 1.2255;
-    flowParams.a_inf = sqrt(Gamma * flowParams.p_inf / flowParams.rho_inf);
+    flowParams.a_inf = sqrt(GAMMA * flowParams.p_inf / flowParams.rho_inf);
     flowParams.V_inf = flowParams.Mach_inf * flowParams.a_inf;
     flowParams.is_adiabatic = false;
 
     bodyParams.transitionPoint = 1.0; // not recommended to change, works bad on other values yet
     bodyParams.bodyLength = 2.0;
-    bodyParams.bodyType = BodyType::DoubleCone;
+    bodyParams.bodyType = BodyType::Cylindrical;
 
-    numericalParams.N = 200;
-    numericalParams.M = 600;
+    constexpr int numerical_mesh_multiplier = 16;
+
+    numericalParams.N = 100 * numerical_mesh_multiplier;
+    numericalParams.M = 300 * numerical_mesh_multiplier;
     numericalParams.num_step_percent = 100;
     numericalParams.files_count = 100;
-    numericalParams.flux_scheme = FluxScheme::Central;
+    numericalParams.flux_scheme = FluxScheme::MacCormack;
 
     heatSource.x = 0.4; // distance from body symmetry axis to heat source i.e. radial distance
     heatSource.y = 0.0; // do not change this because we assume source is located in theta=0 plane

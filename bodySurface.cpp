@@ -4,21 +4,21 @@ double r_b(const double z) {
     switch (bodyParams.bodyType)
     {
         case BodyType::Cylindrical:
-            return tan(Pi / 12.0);
+            return tan(PI / 12.0);
 
         case BodyType::Cone:
-            return tan(Pi / 12.0) * z;
+            return tan(PI / 12.0) * z;
 
         case BodyType::Parabolic:
-            return tan(Pi / 12.0) * sqrt(2*z - 1);
+            return tan(PI / 12.0) * sqrt(2*z - 1);
 
         case BodyType::DoubleCone: {
-            constexpr double k = 0.01;      // coefficient of cone-to-cylinder approximation
-            return tan(Pi / 12.0) + k * (z - 1.0);
+            constexpr double SLOPE = 0.01;      // coefficient of cone-to-cylinder approximation
+            return tan(PI / 12.0) + SLOPE * (z - 1.0);
         }
 
         default:
-            return tan(Pi / 12.0) * z;
+            return tan(PI / 12.0) * z;
     }
 }
 

@@ -34,24 +34,24 @@ G_array& G_array::operator=(const BaseArray& other) {
 
 double G_array::get_alpha() const {
     return -sqrt(
-        (Gamma*Gamma - 1)*data[1]*data[1]
-        + (Gamma*Gamma - 1)*data[2]*data[2]
-        + Gamma*Gamma*data[3]*data[3]
-        - 2*(Gamma*Gamma - 1)*data[0]*data[4]
+        (GAMMA*GAMMA - 1)*data[1]*data[1]
+        + (GAMMA*GAMMA - 1)*data[2]*data[2]
+        + GAMMA*GAMMA*data[3]*data[3]
+        - 2*(GAMMA*GAMMA - 1)*data[0]*data[4]
     );
 }
 
 double G_array::get_rho(const double r) const {
     const double alpha = get_alpha();
     const double result =
-        (data[0]*data[0]*(Gamma*data[3] + alpha))
-        / ((Gamma - 1)*(2*data[0]*data[4] - data[1]*data[1] - data[2]*data[2]));
+        (data[0]*data[0]*(GAMMA*data[3] + alpha))
+        / ((GAMMA - 1)*(2*data[0]*data[4] - data[1]*data[1] - data[2]*data[2]));
     return result / r;
 }
 
 double G_array::get_p(const double r) const {
     const double alpha = get_alpha();
-    const double result = (data[3] + alpha) / (Gamma + 1);
+    const double result = (data[3] + alpha) / (GAMMA + 1);
     return result / r;
 }
 
@@ -65,7 +65,7 @@ double G_array::get_v() const {
 
 double G_array::get_w() const {
     const double alpha = get_alpha();
-    const double result = (Gamma*data[3] - alpha) / ((Gamma + 1)*data[0]);
+    const double result = (GAMMA*data[3] - alpha) / ((GAMMA + 1)*data[0]);
     return result;
 }
 
@@ -116,7 +116,7 @@ E_array get_E(const G_array& G, const double r) {
         rho * u * u + p,
         rho * u * v,
         rho * u * w,
-        u * (Gamma/(Gamma - 1)*p + 0.5 * rho * (u*u + v*v + w*w))
+        u * (GAMMA/(GAMMA - 1)*p + 0.5 * rho * (u*u + v*v + w*w))
     };
     return r * result;
 }
@@ -133,7 +133,7 @@ F_array get_F(const G_array& G, const double r) {
         rho * u * v,
         rho * v * v + p,
         rho * v * w,
-        v * (Gamma/(Gamma - 1)*p + 0.5 * rho * (u*u + v*v + w*w))
+        v * (GAMMA/(GAMMA - 1)*p + 0.5 * rho * (u*u + v*v + w*w))
     };
     return result;
 }
@@ -153,18 +153,22 @@ R_array get_R(const G_array& G, const double r, const double q) {
     return result;
 }
 
-FluxPair get_fluxes(const std::vector<std::vector<E_array>>& E, int i, int j, const FluxScheme scheme, bool is_predictor) {
+FluxPair get_fluxes(
+    const std::vector<std::vector<E_array>>& E,
+    const std::vector<std::vector<E_array>>& E_prev,
+    int i, int j, const FluxScheme scheme, bool is_predictor)
+{
     FluxPair flux;
 
     if (scheme == FluxScheme::BeamWarming) {
         if (is_predictor && i == numericalParams.N - 1) {
-            // Right boundary predictor - upwind from left
+            // Right boundary predictor - upwind from left (Moretti scheme)
             flux.E_left = E[i][j];
             flux.E_right = 3*E[i][j] - 3*E[i-1][j] + E[i-2][j];
         } else if (!is_predictor && i == 0) {
-            // Left boundary corrector - upwind from right
-            flux.E_left = 3*E[i][j] - 3*E[i+1][j] + E[i+2][j];
-            flux.E_right = E[i][j];
+            // Left boundary corrector - upwind from right (actual Beam-Warming)
+            flux.E_left = E[i][j];
+            flux.E_right = E[i+1][j] + (E_prev[i][j] - 2*E_prev[i+1][j] + E_prev[i+2][j]);
         } else {
             // Standard case
             if (is_predictor) {
