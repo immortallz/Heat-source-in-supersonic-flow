@@ -16,7 +16,7 @@ std::vector<double> solver(HeatSource heatSource) {
         psi1_out("output_results/psi1_out.txt"),
         Fy_out("output_results/Fy_out.txt"),
         Mz_out("output_results/Mz_out.txt");
-    
+
     int
         N = numericalParams.N, // xi
         M = numericalParams.M; // theta
@@ -30,20 +30,20 @@ std::vector<double> solver(HeatSource heatSource) {
         z0 = bodyParams.transitionPoint, z = z0, L = bodyParams.bodyLength,
         r_b0, r_b_z0,
         r_s0, r_s_z0,
-        dxi = 1 / static_cast<double>(N - 1),
+        dxi = 1.0 / static_cast<double>(N - 1),
         dth = PI / static_cast<double>(M - 1),
         rho, p, u, v, w;
 
     double Q = 0; // integral of q(r,theta,z)dr*dtheta*dz по всей расчетной области
 
-    std::vector<std::vector<E_array>> E(N, std::vector<E_array>(M));
+    std::vector<std::vector<E_array>>
+        E(N, std::vector<E_array>(M)),
+        E_prev(3, std::vector<E_array>(M));
     std::vector<std::vector<F_array>> F(N, std::vector<F_array>(M));
     std::vector<std::vector<G_array>>
         G_prev(N, std::vector<G_array>(M)),
         G_next(N, std::vector<G_array>(M));
     std::vector<std::vector<R_array>> R(N, std::vector<R_array>(M));
-
-    std::vector<std::vector<E_array>> E_prev(3, std::vector<E_array>(M));
 
     std::vector<std::vector<double>>
         rho_array(N, std::vector<double>(M)),
@@ -90,7 +90,7 @@ std::vector<double> solver(HeatSource heatSource) {
         phi0 = phi_cone.back(), // Ввиду специфики решения уравнения обтекания конуса
         phi1 = phi_cone[0],     // угол phi отсчитывается наоборот: от УВ до поверхности тела
         dphi = (phi1 - phi0) / (static_cast<double>(phi_cone.size()) - 1); // шаг постоянен
-    
+
     // Начальные значения r_s, r_s_theta, r_s_z
     r_b0 = z0 * tan(phi0); // MUST BE EQUIVALENT TO r_b(z0)
     r_s0 = z0 * tan(phi1);
@@ -105,8 +105,9 @@ std::vector<double> solver(HeatSource heatSource) {
 
     double r, xi, theta;
     double seconds;
-    clock_t start_initial = clock();
+    double start_initial = omp_get_wtime();
     // Инициализация начального слоя
+    #pragma omp parallel for private(xi, r, theta, rho, p, u, v, w)
     for(int i = 0; i < N; i++)
     {
         int idx_phi;
@@ -117,8 +118,9 @@ std::vector<double> solver(HeatSource heatSource) {
         double phi = atan(r / z0);
         // Ввиду обратного хода вычисления в задаче о конусе реверсивная индексация
         idx_phi = int(phi_cone.size()) - 1 - int((phi - phi0) / dphi);
-        if(idx_phi < 0 || idx_phi >= int(phi_cone.size()))
+        if(idx_phi < 0 || idx_phi >= int(phi_cone.size())) {
             throw std::out_of_range("Индекс idx_phi = " + std::to_string(idx_phi) + " вне диапазона");
+        }
 
         // Инициализация/переход к переменным настоящей задачи
         rho = rho_cone[idx_phi];
@@ -135,7 +137,7 @@ std::vector<double> solver(HeatSource heatSource) {
             G_prev[i][j].data[2] = rho*v*w;
             G_prev[i][j].data[3] = rho*w*w + p;
             G_prev[i][j].data[4] = w * (GAMMA * p / (GAMMA - 1) + rho*(u*u + v*v + w*w)*0.5);
-            
+
             G_prev[i][j] = G_prev[i][j] * r;
 
             E[i][j] = get_E(G_prev[i][j], r);
@@ -143,19 +145,17 @@ std::vector<double> solver(HeatSource heatSource) {
             R[i][j] = get_R(G_prev[i][j], r, q(r, theta, z0, heatSource, flowParams.is_adiabatic));
 
             // Normalization
-            E[i][j] =
-                xi_r(r_s0, r_b0)*E[i][j]
-                + xi_theta(xi, r_s0, r_b0, 0)*F[i][j]
-                + xi_z(xi, r_s0, r_b0, r_s_z0, r_b_z0)*G_prev[i][j];
-            
-            R[i][j] =
-                R[i][j]
-                - 0/(r_s0 - r_b0) * F[i][j] // r_s_theta = 0 ввиду симметрии задачи о конусе
-                - (r_s_z0 - r_b_z0)/(r_s0 - r_b0) * G_prev[i][j];
+            E[i][j] = xi_r(r_s0, r_b0)*E[i][j]
+                    + xi_theta(xi, r_s0, r_b0, 0)*F[i][j]
+                    + xi_z(xi, r_s0, r_b0, r_s_z0, r_b_z0)*G_prev[i][j];
+
+            R[i][j] = R[i][j]
+                    - 0.0/(r_s0 - r_b0) * F[i][j] // r_s_theta = 0 ввиду симметрии задачи о конусе
+                    - (r_s_z0 - r_b_z0)/(r_s0 - r_b0) * G_prev[i][j];
         }
     }
-    clock_t finish_initial = clock();
-    seconds = static_cast<double>(finish_initial - start_initial) / CLOCKS_PER_SEC;
+    double finish_initial = omp_get_wtime();
+    seconds = finish_initial - start_initial;
     std::cout << "Elapsed time (initial layer): " << seconds << "s" << std::endl;
 
     // Подъемная сила, поворачивающий момент
@@ -164,16 +164,17 @@ std::vector<double> solver(HeatSource heatSource) {
     // Запись в файл
     z_out << z << " ";
 
-    // #pragma omp parallel for private(xi, r, theta)
+    #pragma omp parallel for private(xi, r, theta)
     for(int i = 0; i < N; i++){
         xi = i * dxi;
         r = r_from_xi(xi, r_s0, r_b0);
-        for(int j = 0; j < M; j++){
-            rho_array[i][j] = G_prev[i][j].get_rho(r);
-            p_array[i][j] = G_prev[i][j].get_p(r);
-            u_array[i][j] = G_prev[i][j].get_u();
-            v_array[i][j] = G_prev[i][j].get_v();
-            w_array[i][j] = G_prev[i][j].get_w();
+        for(int j = 0; j < M; j++) {
+            const auto phys = G_prev[i][j].get_physical_parameters(r);
+            rho_array[i][j] = phys.rho;
+            p_array[i][j] = phys.p;
+            u_array[i][j] = phys.u;
+            v_array[i][j] = phys.v;
+            w_array[i][j] = phys.w;
         }
     }
     // Запись в файлы
@@ -226,13 +227,13 @@ std::vector<double> solver(HeatSource heatSource) {
     psi0_out << "\n";
     psi1_out << "\n";
 
-    double dz, CFL = 0.5, lambda_xi, lambda_th;
+    double dz, lambda_xi, lambda_th;
     double MM, mm, xi_z_val, xi_r_val, xi_theta_val;
     std::vector<double> z_array;
 
     // Главный цикл
-    clock_t start = clock();
-    while(z < L){
+    double start = omp_get_wtime();
+    while(z < L) {
         z_array.push_back(z);
         if(progress_bar){
             for(int s = 0; s < num_step_percent; s++){
@@ -245,7 +246,7 @@ std::vector<double> solver(HeatSource heatSource) {
         dz = 0.01; // Начальное приближение шага интегрирования по z
 
         // Вычисление шага dz. Спектральный метод устойчивости
-        // #pragma omp parallel for reduction(min: dz) private(xi, r, xi_r_val, xi_theta_val, xi_z_val, MM, mm, lambda_xi, lambda_th)
+        #pragma omp parallel for reduction(min: dz) private(xi, r, xi_r_val, xi_theta_val, xi_z_val, MM, mm, lambda_xi, lambda_th)
         for(int i = 0; i < N; i++){
             xi = i * dxi;
             for(int j = 0; j < M; j++){
@@ -253,7 +254,7 @@ std::vector<double> solver(HeatSource heatSource) {
                 xi_r_val = xi_r(r_s[j].back(), r_b(z));
                 xi_theta_val = xi_theta(xi, r_s[j].back(), r_b(z), r_s_theta[j].back());
                 xi_z_val = xi_z(xi, r_s[j].back(), r_b(z), r_s_z[j].back(), r_b_z(z));
-                
+
                 double a = sqrt(GAMMA * p_array[i][j] / rho_array[i][j]);
                 MM = w_array[i][j] / a;
                 mm = (
@@ -283,7 +284,7 @@ std::vector<double> solver(HeatSource heatSource) {
             }
         }
         // Запас устойчивости (коэффициент CFL)
-        dz *= CFL;
+        dz *= numericalParams.CFL;
         if (z + dz >= L) {
             dz = L - z;
         }
@@ -296,7 +297,7 @@ std::vector<double> solver(HeatSource heatSource) {
                     for(int j = 0; j < M; j++) {
                         E_prev[i][j] = E[i][j];}}
             }
-            // #pragma omp parallel for private(xi, theta, idx)
+            #pragma omp parallel for
             for(int i = 0; i < N; i++){
                 // Граница theta = 0
                 if(step == 0) { // predictor
@@ -387,33 +388,30 @@ std::vector<double> solver(HeatSource heatSource) {
             // r_s, r_s_theta, r_s_z calculation (pred-corr)
             for(int j = 0; j < M; j++)
                 r_s_z_prev[j] = r_s_z[j].back(); // Создание защищенной копии r_s_z
-            for(int j = 0; j < M; j++){
-                if(step == 0){ // predictor
+            for(int j = 0; j < M; j++) {
+                if(step == 0) { // predictor
                     r_s_pred[j] = r_s[j].back();
                     r_s[j].push_back(r_s[j].back() + r_s_z_prev[j]*dz);
                     r_s_theta_pred[j] = r_s_theta[j].back();
-                    if(j == 0){
+                    if(j == 0) {
                         r_s_theta[j].push_back(
                             r_s_theta[j].back() + dz/dth*(r_s_z_prev[j] - r_s_z_prev[j + 1])
                         );
-                    }
-                    else{
+                    } else {
                         r_s_theta[j].push_back(
                             r_s_theta[j].back() + dz/dth*(r_s_z_prev[j] - r_s_z_prev[j - 1])
                         );
                     }
                     // r_s_theta[0].back() = 0; r_s_theta[M - 1].back() = 0; // ВЫБРАТЬ: либо зануление, либо симметрия
-                    
-                }
-                else{ // corrector
+
+                } else { // corrector
                     r_s[j].back() = 0.5*(r_s_pred[j] + r_s[j].back()) + 0.5*dz*r_s_z_prev[j];
                     if(j < M - 1){
                         r_s_theta[j].back() = (
                             0.5 * (r_s_theta_pred[j] + r_s_theta[j].back())
                             + 0.5 * dz/dth * (r_s_z_prev[j + 1] - r_s_z_prev[j])
                         );
-                    }
-                    else{
+                    } else {
                         r_s_theta[j].back() = (
                             0.5 * (r_s_theta_pred[j] + r_s_theta[j].back())
                             + 0.5 * dz/dth * (r_s_z_prev[j - 1] - r_s_z_prev[j]) // симметрия
@@ -429,7 +427,7 @@ std::vector<double> solver(HeatSource heatSource) {
             }
 
             // Восстановление векторов E, F, R и физических величин
-            // #pragma omp parallel for private(xi, theta, r)
+            #pragma omp parallel for private(xi, theta, r)
             for(int i = 0; i < N; i++){
                 xi = i * dxi;
                 // Граница theta = 0
@@ -438,14 +436,15 @@ std::vector<double> solver(HeatSource heatSource) {
                 E[i][0] = get_E(G_next[i][0], r);
                 F[i][0] = get_F(G_next[i][0], r);
                 R[i][0] = get_R(G_next[i][0], r, q(r, theta, z, heatSource, flowParams.is_adiabatic));
-    
-    
+
+
                 // Восстановление физических величин по вектору G
-                rho_array[i][0] = G_next[i][0].get_rho(r);
-                p_array[i][0] = G_next[i][0].get_p(r);
-                u_array[i][0] = G_next[i][0].get_u();
-                v_array[i][0] = G_next[i][0].get_v();
-                w_array[i][0] = G_next[i][0].get_w();
+                auto phys = G_next[i][0].get_physical_parameters(r);
+                rho_array[i][0] = phys.rho;
+                p_array[i][0] = phys.p;
+                u_array[i][0] = phys.u;
+                v_array[i][0] = phys.v;
+                w_array[i][0] = phys.w;
 
                 // Внутренние (по theta) узлы
                 for(int j = 1; j < M - 1; j++){
@@ -454,15 +453,16 @@ std::vector<double> solver(HeatSource heatSource) {
                     E[i][j] = get_E(G_next[i][j], r);
                     F[i][j] = get_F(G_next[i][j], r);
                     R[i][j] = get_R(G_next[i][j], r, q(r, theta, z, heatSource, flowParams.is_adiabatic));
-    
+
                     // Восстановление физических величин по вектору G
-                    rho_array[i][j] = G_next[i][j].get_rho(r);
-                    p_array[i][j] = G_next[i][j].get_p(r);
-                    u_array[i][j] = G_next[i][j].get_u();
-                    v_array[i][j] = G_next[i][j].get_v();
-                    w_array[i][j] = G_next[i][j].get_w();
+                    phys = G_next[i][j].get_physical_parameters(r);
+                    rho_array[i][j] = phys.rho;
+                    p_array[i][j] = phys.p;
+                    u_array[i][j] = phys.u;
+                    v_array[i][j] = phys.v;
+                    w_array[i][j] = phys.w;
                 }
-                
+
                 // Граница theta = Pi
                 theta = PI;
                 r = r_from_xi(xi, r_s[M - 1].back(), r_b(z));
@@ -471,13 +471,14 @@ std::vector<double> solver(HeatSource heatSource) {
                 R[i][M - 1] = get_R(G_next[i][M - 1], r, q(r, theta, z, heatSource, flowParams.is_adiabatic));
 
                 // Восстановление физических величин по вектору G
-                rho_array[i][M - 1] = G_next[i][M - 1].get_rho(r);
-                p_array[i][M - 1] = G_next[i][M - 1].get_p(r);
-                u_array[i][M - 1] = G_next[i][M - 1].get_u();
-                v_array[i][M - 1] = G_next[i][M - 1].get_v();
-                w_array[i][M - 1] = G_next[i][M - 1].get_w();
+                phys = G_next[i][M - 1].get_physical_parameters(r);
+                rho_array[i][M - 1] = phys.rho;
+                p_array[i][M - 1] = phys.p;
+                u_array[i][M - 1] = phys.u;
+                v_array[i][M - 1] = phys.v;
+                w_array[i][M - 1] = phys.w;
             }
-            
+
             // i = 0 and i = N - 1; поправки на границах
 
             // Метод Аббета (поправка на поверхности тела)
@@ -492,11 +493,7 @@ std::vector<double> solver(HeatSource heatSource) {
                         u_array[0][j]*u_array[0][j]
                         + v_array[0][j]*v_array[0][j]
                         + w_array[0][j]*w_array[0][j]
-                    )
-                    /
-                    (
-                        GAMMA * p_array[0][j] / rho_array[0][j]
-                    )
+                    ) / ( GAMMA * p_array[0][j] / rho_array[0][j] )
                 );
 
                 delta_th = asin(
@@ -523,13 +520,13 @@ std::vector<double> solver(HeatSource heatSource) {
                 // Полная энтальпия и модуль скорости из интеграла Бернулли
                 double H = GAMMA/(GAMMA - 1) * flowParams.p_inf/flowParams.rho_inf + 0.5*flowParams.V_inf*flowParams.V_inf;
                 double V_abs = sqrt(2*(H - GAMMA/(GAMMA - 1) * p_array[0][j]/rho_array[0][j]));
-    
+
                 double Vr_tau, Vth_tau, Vz_tau;
                 // Касательная компонента скорости V_tau:
                 Vr_tau = u_array[0][j] - V_n / sqrt(1 + r_b_z(z)*r_b_z(z));
                 Vth_tau = v_array[0][j];
                 Vz_tau = w_array[0][j] + V_n * r_b_z(z) / sqrt(1 + r_b_z(z)*r_b_z(z));
-    
+
                 double V_tau_abs = sqrt(Vr_tau*Vr_tau + Vth_tau*Vth_tau + Vz_tau*Vz_tau);
                 //Поправка скорости
                 u_array[0][j] = Vr_tau * V_abs / V_tau_abs;
@@ -558,22 +555,19 @@ std::vector<double> solver(HeatSource heatSource) {
                     / (2 * flowParams.rho_inf)
                 );
                 double V_n = flowParams.rho_inf / rho_array[N - 1][j] * V_inf_n;
-                if(step == 0)
+
+                if(step == 0) {
                     r_s_z[j].push_back(
                         sqrt(
                             V_inf_n * V_inf_n
                             * (1 + r_s_theta[j].back()*r_s_theta[j].back()/r_s[j].back()/r_s[j].back())
-                            / (flowParams.V_inf*flowParams.V_inf - V_inf_n*V_inf_n)
-                        )
-                    );
-                else
-                    r_s_z[j].back() = (
-                        sqrt(
-                            V_inf_n * V_inf_n
-                            * (1 + r_s_theta[j].back()*r_s_theta[j].back()/r_s[j].back()/r_s[j].back())
-                            / (flowParams.V_inf*flowParams.V_inf - V_inf_n*V_inf_n)
-                        )
-                    );
+                            / (flowParams.V_inf*flowParams.V_inf - V_inf_n*V_inf_n)));
+                } else {
+                    r_s_z[j].back() = sqrt(
+                        V_inf_n * V_inf_n
+                        * (1 + r_s_theta[j].back()*r_s_theta[j].back()/r_s[j].back()/r_s[j].back())
+                        / (flowParams.V_inf*flowParams.V_inf - V_inf_n*V_inf_n));
+                }
 
 
                 // Нормаль к поверхности УВ
@@ -586,7 +580,7 @@ std::vector<double> solver(HeatSource heatSource) {
                 nx = 1 / n_norm;
                 ny = -r_s_theta[j].back() / r_s[j].back() / n_norm;
                 nz = -r_s_z_prev[j] / n_norm;
-                
+
                 // Касательный вектор к поверхности УВ
                 double V_inf_tau_x, V_inf_tau_y, V_inf_tau_z;
                 V_inf_tau_x = 0 - V_inf_n * nx;
@@ -602,6 +596,7 @@ std::vector<double> solver(HeatSource heatSource) {
             if(step == 1){
                 // Интегрирование уравнения d(psi)/dr = rho*w*r
                 psi0[0] = 0;
+                #pragma omp parallel for private(xi, r)
                 for(int i = 1; i < N; i++){
                     xi = i * dxi;
                     r = r_from_xi(xi, r_s[0].back(), r_b(z));
@@ -609,6 +604,7 @@ std::vector<double> solver(HeatSource heatSource) {
                     psi0[i] = psi0[i - 1] + rho_array[i][0] * w_array[i][0] * r * dr;
                 }
                 psi1[0] = 0;
+                #pragma omp parallel for private(xi, r)
                 for(int i = 1; i < N; i++){
                     xi = i * dxi;
                     r = r_from_xi(xi, r_s[M - 1].back(), r_b(z));
@@ -625,8 +621,9 @@ std::vector<double> solver(HeatSource heatSource) {
                     psi1_out << "\n";
                 }
             }
-    
+
             //Поправка векторов E, F, G, R на границах
+            #pragma omp parallel for private(xi, theta, r)
             for(int i = 0; i < N; i += N - 1) {
                 xi = i * dxi;
                 for(int j = 0; j < M; j++) {
@@ -649,14 +646,14 @@ std::vector<double> solver(HeatSource heatSource) {
                         )
                     );
                     G_next[i][j] = G_next[i][j] * r;
-                    
+
                     E[i][j] = get_E(G_next[i][j], r);
                     F[i][j] = get_F(G_next[i][j], r);
                     R[i][j] = get_R(G_next[i][j], r, q(r, theta, z, heatSource, flowParams.is_adiabatic));
                 }
             }
             // Нормализация
-            // #pragma omp parallel for private(xi, theta, r)
+            #pragma omp parallel for private(xi)
             for(int i = 0; i < N; i++){
                 xi = i * dxi;
                 for(int j = 0; j < M; j++){
@@ -678,6 +675,7 @@ std::vector<double> solver(HeatSource heatSource) {
             }
         }
         // Q integration
+        #pragma omp parallel for reduction(+:Q) private(xi, r, theta)
         for(int i = 1; i < N; i++){
             xi = i * dxi;
             for(int j = 0; j < M; j++){
@@ -689,14 +687,25 @@ std::vector<double> solver(HeatSource heatSource) {
         }
 
         // Запись в файл
-        // rho_out << z << "\n";
-        // p_out << z << "\n";
-        // u_out << z << "\n";
-        // v_out << z << "\n";
-        // w_out << z << "\n";
-
         if(z > z0 + double(k)/double(files_count) || z >= L) {
             z_out << z << " ";
+
+            // NaN health-check
+            if (std::isnan(rho_array[0][0])
+                || std::isnan(p_array[0][0])
+                || std::isnan(u_array[0][0])
+                || std::isnan(v_array[0][0])
+                || std::isnan(w_array[0][0])) {
+                std::cerr << "ERROR: NaN detected at (i=0, j=0, z=" << z << ")" << std::endl;
+                std::cerr << "rho=" << rho_array[0][0]
+                << " p=" << p_array[0][0]
+                << " u=" << u_array[0][0]
+                << "v=" << v_array[0][0]
+                << " w=" << w_array[0][0]
+                << std::endl;
+                std::exit(1);
+            }
+
             for(int i = 0; i < N; i++){
                 for(int j = 0; j < M; j++)
                 {
@@ -730,13 +739,13 @@ std::vector<double> solver(HeatSource heatSource) {
     }
     if(progress_bar)
         std::cout << "100% completed" << std::endl;
-    
+
     std::cout << "==================================\nLifting force: " << Fy << std::endl;
     std::cout << "Rotation momentum: " << Mz << std::endl;
     std::cout << "Q = " << Q << std::endl;
 
-    clock_t finish = clock();
-    seconds = double(finish - start) / CLOCKS_PER_SEC;
+    double finish = omp_get_wtime();
+    seconds = finish - start;
     std::cout << "Elapsed time (main loop): " << seconds << "s" << std::endl;
 
     std::vector<double> res = {Fy, Mz, Q};

@@ -1,11 +1,11 @@
 #include "r.h"
 
-vector<double> addVectors(const vector<double>& a, const vector<double>& b) {
+std::vector<double> addVectors(const std::vector<double>& a, const std::vector<double>& b) {
     if (a.size() != b.size()) {
-        throw invalid_argument("Vectors must have the same size");
+        throw std::invalid_argument("Vectors must have the same size");
     }
 
-    vector<double> result(a.size());
+    std::vector<double> result(a.size());
     for (size_t i = 0; i < a.size(); ++i) {
         result[i] = a[i] + b[i];
     }
@@ -13,12 +13,12 @@ vector<double> addVectors(const vector<double>& a, const vector<double>& b) {
 }
 
 template <typename T>
-vector<T> operator+(const vector<T>& a, const vector<T>& b) {
+std::vector<T> operator+(const std::vector<T>& a, const std::vector<T>& b) {
     if (a.size() != b.size()) {
-        throw invalid_argument("Vectors must have the same size");
+        throw std::invalid_argument("Vectors must have the same size");
     }
 
-    vector<T> result(a.size());
+    std::vector<T> result(a.size());
     for (size_t i = 0; i < a.size(); ++i) {
         result[i] = a[i] + b[i];
     }
@@ -26,8 +26,8 @@ vector<T> operator+(const vector<T>& a, const vector<T>& b) {
 }
 
 template <typename T>
-vector<T> operator*(const vector<T>& vec, T scalar) {
-    vector<T> result(vec.size());
+std::vector<T> operator*(const std::vector<T>& vec, T scalar) {
+    std::vector<T> result(vec.size());
     for (size_t i = 0; i < vec.size(); ++i) {
         result[i] = vec[i] * scalar;
     }
@@ -35,35 +35,35 @@ vector<T> operator*(const vector<T>& vec, T scalar) {
 }
 
 template <typename T>
-vector<T> operator*(T scalar, const vector<T>& vec) {
+std::vector<T> operator*(T scalar, const std::vector<T>& vec) {
     return vec * scalar; // Просто вызываем первую перегрузку
 }
 
-double a_sqaured(vector<double> v, double C)
+double a_squared(std::vector<double> v, double C)
 {
-	return (gamma - 1) * (C - 0.5*(v[0]*v[0] + v[1]*v[1]));
+	return (GAMMA - 1) * (C - 0.5*(v[0]*v[0] + v[1]*v[1]));
 }
 
-vector<double> func(double theta, vector<double> v, double C)
+std::vector<double> func(double theta, std::vector<double> v, double C)
 {
 	// (v[0], v[1]) = (V_R, V_\theta)
 
-	vector<double> result(v.size());
-	double a2 = a_sqaured(v, C);
+	std::vector<double> result(v.size());
+	const double a2 = a_squared(v, C);
 	result[0] = v[1];
 	result[1] = -v[0] + a2*(v[0] + v[1]/tan(theta)) / (v[1]*v[1] - a2);
 	return result;
 }
 
-vector<double> RK(double t0, double T, double h, vector<double> y0, string filename, double C)
+std::vector<double> RK(double t0, double T, double h, std::vector<double> y0, std::string filename, double C)
 {
 	int
 		s = 7, //num of stages
 		dim = y0.size();
-	vector<vector<double>>
-		a(s + 1, vector<double>(s)),
-		k(s + 1, vector<double>(dim));
-	vector<double>
+	std::vector<std::vector<double>>
+		a(s + 1, std::vector<double>(s)),
+		k(s + 1, std::vector<double>(dim));
+	std::vector<double>
 		b(s + 1),
 		c(s + 1),
 		nn(dim),
@@ -149,28 +149,28 @@ double secant_method(const double p0, const double rho0, const double V1, const 
 	const double h, const double tol
 	)
 {
-	vector<double> v(2), //v[0] = V_R, v[1] = V_\theta
+	std::vector<double> v(2), //v[0] = V_R, v[1] = V_\theta
 		sol(2);
 	const double
 		C = 			//Bernoulli constant
-			gamma/(gamma - 1) * p0 / rho0
+			GAMMA/(GAMMA - 1) * p0 / rho0
 			+ 0.5*(V1*V1),
-		a0 = sqrt(gamma * p0 / rho0),
+		a0 = sqrt(GAMMA * p0 / rho0),
 		M = V1 / a0;
 
-	const string tmp_filename = "tmp.txt";
-	double err0, err1 = 1;
+	const std::string tmp_filename = "tmp.txt";
+	double err0 = 0, err1 = 1;
 	while(abs(err1) > tol)
 	{
-		double rho1_rho2 = (gamma - 1) / (gamma + 1)
-		                   + 2 / ((gamma + 1) * M * M * sin(beta0) * sin(beta0));
+		double rho1_rho2 = (GAMMA - 1) / (GAMMA + 1)
+		                   + 2 / ((GAMMA + 1) * M * M * sin(beta0) * sin(beta0));
 		v[0] = V1 * cos(beta0);
 		v[1] = -rho1_rho2 * V1 * sin(beta0);
 		sol = RK(beta0, theta0, -h, v, tmp_filename, C);
 		err0 = sol[1];
 
-		rho1_rho2 = (gamma - 1)/(gamma + 1)
-			+ 2 / ((gamma + 1) * M*M * sin(beta1)*sin(beta1));
+		rho1_rho2 = (GAMMA - 1)/(GAMMA + 1)
+			+ 2 / ((GAMMA + 1) * M*M * sin(beta1)*sin(beta1));
 		v[0] = V1 * cos(beta1);
 		v[1] = -rho1_rho2 * V1 * sin(beta1);
 		sol = RK(beta1, theta0, -h, v, tmp_filename, C);
@@ -188,22 +188,22 @@ double newton_method(double p0, double rho0, double V1, double theta0,
 	double h, double tol
 	)
 {
-	vector<double> v(2), //v[0] = V_R, v[1] = V_\theta
+	std::vector<double> v(2), //v[0] = V_R, v[1] = V_\theta
 		sol(2);
 	double 
 		C = 			//Bernoulli constant
-			gamma/(gamma - 1) * p0 / rho0
+			GAMMA/(GAMMA - 1) * p0 / rho0
 			+ 0.5*(V1*V1),
-		a0 = sqrt(gamma * p0 / rho0),
+		a0 = sqrt(GAMMA * p0 / rho0),
 		M = V1 / a0,
 		rho1_rho2;
 
-	const string tmp_filename = "tmp.txt";
+	const std::string tmp_filename = "tmp.txt";
 	double err0 = 1;
 	while(abs(err0) > tol)
 	{
-		rho1_rho2 = (gamma - 1)/(gamma + 1)
-			+ 2 / ((gamma + 1) * M*M * sin(beta0)*sin(beta0));
+		rho1_rho2 = (GAMMA - 1)/(GAMMA + 1)
+			+ 2 / ((GAMMA + 1) * M*M * sin(beta0)*sin(beta0));
 		v[0] = V1 * cos(beta0);
 		v[1] = -rho1_rho2 * V1 * sin(beta0);
 		sol = RK(beta0, theta0, -h, v, tmp_filename, C);

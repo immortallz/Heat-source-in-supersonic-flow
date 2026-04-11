@@ -13,7 +13,7 @@ double r_b(const double z) {
             return tan(PI / 12.0) * sqrt(2*z - 1);
 
         case BodyType::DoubleCone: {
-            constexpr double SLOPE = 0.01;      // coefficient of cone-to-cylinder approximation
+            const double SLOPE = tan(PI / 12.0) * 0.5;      // slope of main cone approximation
             return tan(PI / 12.0) + SLOPE * (z - 1.0);
         }
 
@@ -23,6 +23,6 @@ double r_b(const double z) {
 }
 
 double r_b_z(const double z) {
-    double dz = 1e-12;
+    constexpr double dz = 1e-8;
     return (r_b(z + dz) - r_b(z - dz)) / dz * 0.5;
 }

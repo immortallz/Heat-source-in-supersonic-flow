@@ -41,6 +41,21 @@ double G_array::get_alpha() const {
     );
 }
 
+PhysicalParameters G_array::get_physical_parameters(const double r) const {
+    const double alpha = get_alpha();
+    PhysicalParameters prim{};
+
+    prim.rho = (data[0]*data[0]*(GAMMA*data[3] + alpha))
+             / ((GAMMA - 1)*(2*data[0]*data[4] - data[1]*data[1] - data[2]*data[2]))
+             / r;
+    prim.p = (data[3] + alpha) / (GAMMA + 1) / r;
+    prim.u = data[1] / data[0];
+    prim.v = data[2] / data[0];
+    prim.w = (GAMMA*data[3] - alpha) / ((GAMMA + 1)*data[0]);
+
+    return prim;
+}
+
 double G_array::get_rho(const double r) const {
     const double alpha = get_alpha();
     const double result =
@@ -106,47 +121,36 @@ G_array corrector(
 }
 
 E_array get_E(const G_array& G, const double r) {
-    const double rho = G.get_rho(r);
-    const double p   = G.get_p(r);
-    const double u   = G.get_u();
-    const double v   = G.get_v();
-    const double w   = G.get_w();
+    const auto phys = G.get_physical_parameters(r);
     const E_array result = {
-        rho * u,
-        rho * u * u + p,
-        rho * u * v,
-        rho * u * w,
-        u * (GAMMA/(GAMMA - 1)*p + 0.5 * rho * (u*u + v*v + w*w))
+        phys.rho * phys.u,
+        phys.rho * phys.u * phys.u + phys.p,
+        phys.rho * phys.u * phys.v,
+        phys.rho * phys.u * phys.w,
+        phys.u * (GAMMA/(GAMMA - 1)*phys.p + 0.5 * phys.rho * (phys.u*phys.u + phys.v*phys.v + phys.w*phys.w))
     };
     return r * result;
 }
 
 F_array get_F(const G_array& G, const double r) {
     // Для функций get_F и get_R используем r = 1 при вычислении rho и p
-    const double rho = G.get_rho(r);
-    const double p   = G.get_p(r);
-    const double u   = G.get_u();
-    const double v   = G.get_v();
-    const double w   = G.get_w();
+    const auto phys = G.get_physical_parameters(r);
     const F_array result = {
-        rho * v,
-        rho * u * v,
-        rho * v * v + p,
-        rho * v * w,
-        v * (GAMMA/(GAMMA - 1)*p + 0.5 * rho * (u*u + v*v + w*w))
+        phys.rho * phys.v,
+        phys.rho * phys.u * phys.v,
+        phys.rho * phys.v * phys.v + phys.p,
+        phys.rho * phys.v * phys.w,
+        phys.v * (GAMMA/(GAMMA - 1)*phys.p + 0.5 * phys.rho * (phys.u*phys.u + phys.v*phys.v + phys.w*phys.w))
     };
     return result;
 }
 
 R_array get_R(const G_array& G, const double r, const double q) {
-    const double rho = G.get_rho(r);
-    const double p   = G.get_p(r);
-    const double u   = G.get_u();
-    const double v   = G.get_v();
+    const auto phys = G.get_physical_parameters(r);
     const R_array result = {
         0,
-        rho * v * v + p,
-        -rho * u * v,
+        phys.rho * phys.v * phys.v + phys.p,
+        -phys.rho * phys.u * phys.v,
         0,
         q
     };
@@ -156,7 +160,7 @@ R_array get_R(const G_array& G, const double r, const double q) {
 FluxPair get_fluxes(
     const std::vector<std::vector<E_array>>& E,
     const std::vector<std::vector<E_array>>& E_prev,
-    int i, int j, const FluxScheme scheme, bool is_predictor)
+    const int i, const int j, const FluxScheme scheme, const bool is_predictor)
 {
     FluxPair flux;
 
@@ -182,11 +186,11 @@ FluxPair get_fluxes(
     } else {
         // Central difference
         if (is_predictor) {
-            int idx = int(i == numericalParams.N - 1);
+            const int idx = int(i == numericalParams.N - 1);
             flux.E_left = E[i - idx][j];
             flux.E_right = E[i + 1 - idx][j];
         } else {
-            int idx = int(i == 0);
+            const int idx = int(i == 0);
             flux.E_left = E[i - 1 + idx][j];
             flux.E_right = E[i + idx][j];
         }

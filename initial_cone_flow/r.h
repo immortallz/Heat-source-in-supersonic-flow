@@ -5,27 +5,25 @@
 #include <cmath>
 #include <fstream>
 
-#define PI 3.141592653589793
-#define gamma 1.4
+constexpr double PI = 3.141592653589793;
+constexpr double GAMMA = 1.4;
 
-using namespace std;
-
-vector<double> addVectors(const vector<double>& a, const vector<double>& b);
+std::vector<double> addVectors(const std::vector<double>& a, const std::vector<double>& b);
 
 template <typename T>
-vector<T> operator+(const vector<T>& a, const vector<T>& b);
+std::vector<T> operator+(const std::vector<T>& a, const std::vector<T>& b);
 
 template <typename T>
-vector<T> operator*(const vector<T>& vec, T scalar);
+std::vector<T> operator*(const std::vector<T>& vec, T scalar);
 
 template <typename T>
-vector<T> operator*(T scalar, const vector<T>& vec);
+std::vector<T> operator*(T scalar, const std::vector<T>& vec);
 
-double a_sqaured(vector<double> v, double C);
+double a_squared(std::vector<double> v, double C);
 
-vector<double> func(double theta, vector<double> v, double C);
+std::vector<double> func(double theta, std::vector<double> v, double C);
 
-vector<double> RK(double t0, double T, double h, vector<double> y0, string filename, double C);
+std::vector<double> RK(double t0, double T, double h, std::vector<double> y0, std::string filename, double C);
 
 double secant_method(double p0, double rho0, double V1, double theta0,
 	double beta0, double beta1,

@@ -6,6 +6,7 @@
 #include <iostream>
 #include <fstream>
 #include <ctime>
+#include <omp.h>
 
 constexpr double GAMMA = 1.4;
 constexpr double PI = 3.141592653589793;
@@ -40,6 +41,7 @@ struct BodyParams {
 struct NumericalParams {
 	int N; // xi coordinate nodes count
 	int M; // theta coordinate nodes count
+	double CFL;
 	int num_step_percent;
 	int files_count;
 	FluxScheme flux_scheme;
@@ -119,12 +121,17 @@ public:
 	F_array& operator=(const BaseArray& other) override;
 };
 
+struct PhysicalParameters {
+	double rho, p, u, v, w;
+};
+
 class G_array : public BaseArray {
 public:
 	G_array();
 	G_array(const BaseArray& base);
 	G_array(const std::initializer_list<double>& list);
 	G_array& operator=(const BaseArray& other) override;
+	PhysicalParameters get_physical_parameters(double r) const;
 	double get_alpha() const;
 	double get_rho(double r) const override;
 	double get_p(double r) const override;
