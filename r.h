@@ -1,12 +1,8 @@
 #pragma once
 #include <array>
 #include <initializer_list>
-#include <cmath>
-#include <vector>
-#include <iostream>
-#include <fstream>
-#include <ctime>
 #include <omp.h>
+#include <vector>
 
 constexpr double GAMMA = 1.4;
 constexpr double PI = 3.141592653589793;

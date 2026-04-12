@@ -1,4 +1,5 @@
 #include "r.h"
+#include <cmath>
 
 double q(const double r, const double theta, const double z, const HeatSource &heatSource, const bool is_adiabatic) {
     if (is_adiabatic){

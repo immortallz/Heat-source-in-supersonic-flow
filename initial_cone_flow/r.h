@@ -1,9 +1,6 @@
 #pragma once
-#include <iostream>
 #include <vector>
 #include <string>
-#include <cmath>
-#include <fstream>
 
 constexpr double PI = 3.141592653589793;
 constexpr double GAMMA = 1.4;
@@ -19,9 +16,9 @@ std::vector<T> operator*(const std::vector<T>& vec, T scalar);
 template <typename T>
 std::vector<T> operator*(T scalar, const std::vector<T>& vec);
 
-double a_squared(std::vector<double> v, double C);
+double a_squared(const std::vector<double> &v, double C);
 
-std::vector<double> func(double theta, std::vector<double> v, double C);
+std::vector<double> func(double theta, const std::vector<double> &v, double C);
 
 std::vector<double> RK(double t0, double T, double h, std::vector<double> y0, std::string filename, double C);
 

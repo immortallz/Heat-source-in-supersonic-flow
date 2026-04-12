@@ -39,12 +39,12 @@ std::vector<T> operator*(T scalar, const std::vector<T>& vec) {
     return vec * scalar; // Просто вызываем первую перегрузку
 }
 
-double a_squared(std::vector<double> v, double C)
+double a_squared(const std::vector<double> &v, const double C)
 {
 	return (GAMMA - 1) * (C - 0.5*(v[0]*v[0] + v[1]*v[1]));
 }
 
-std::vector<double> func(double theta, std::vector<double> v, double C)
+std::vector<double> func(const double theta, const std::vector<double> &v, const double C)
 {
 	// (v[0], v[1]) = (V_R, V_\theta)
 
@@ -144,9 +144,9 @@ std::vector<double> RK(double t0, double T, double h, std::vector<double> y0, st
 	return y; 
 }
 
-double secant_method(const double p0, const double rho0, const double V1, const double theta0,
+double secant_method(double p0, double rho0, double V1, double theta0,
 	double beta0, double beta1,
-	const double h, const double tol
+	double h, double tol
 	)
 {
 	std::vector<double> v(2), //v[0] = V_R, v[1] = V_\theta
@@ -190,20 +190,16 @@ double newton_method(double p0, double rho0, double V1, double theta0,
 {
 	std::vector<double> v(2), //v[0] = V_R, v[1] = V_\theta
 		sol(2);
-	double 
-		C = 			//Bernoulli constant
-			GAMMA/(GAMMA - 1) * p0 / rho0
-			+ 0.5*(V1*V1),
+	const double  C = GAMMA/(GAMMA - 1) * p0 / rho0 + 0.5*(V1*V1), //Bernoulli constant
 		a0 = sqrt(GAMMA * p0 / rho0),
-		M = V1 / a0,
-		rho1_rho2;
+		M = V1 / a0;
 
 	const std::string tmp_filename = "tmp.txt";
 	double err0 = 1;
 	while(abs(err0) > tol)
 	{
-		rho1_rho2 = (GAMMA - 1)/(GAMMA + 1)
-			+ 2 / ((GAMMA + 1) * M*M * sin(beta0)*sin(beta0));
+		const double rho1_rho2 = (GAMMA - 1) / (GAMMA + 1)
+		                   + 2 / ((GAMMA + 1) * M * M * sin(beta0) * sin(beta0));
 		v[0] = V1 * cos(beta0);
 		v[1] = -rho1_rho2 * V1 * sin(beta0);
 		sol = RK(beta0, theta0, -h, v, tmp_filename, C);

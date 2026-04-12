@@ -1,5 +1,9 @@
 #include "r.h"
+#include <iostream>
 #include <string>
+#include <cmath>
+#include <fstream>
+#include <algorithm>
 
 std::vector<double> solver(HeatSource heatSource) {
     std::ofstream
@@ -156,6 +160,7 @@ std::vector<double> solver(HeatSource heatSource) {
     }
     double finish_initial = omp_get_wtime();
     seconds = finish_initial - start_initial;
+    std::cout << "==================================" << std::endl;
     std::cout << "Elapsed time (initial layer): " << seconds << "s" << std::endl;
 
     // Подъемная сила, поворачивающий момент
@@ -256,28 +261,25 @@ std::vector<double> solver(HeatSource heatSource) {
                 xi_z_val = xi_z(xi, r_s[j].back(), r_b(z), r_s_z[j].back(), r_b_z(z));
 
                 double a = sqrt(GAMMA * p_array[i][j] / rho_array[i][j]);
+                double U = u_array[i][j]*xi_r_val + v_array[i][j]*xi_theta_val/r + w_array[i][j]*xi_z_val;
                 MM = w_array[i][j] / a;
-                mm = (
-                    u_array[i][j]*xi_r_val
-                    + v_array[i][j]*xi_theta_val/r
-                    + w_array[i][j]*xi_z_val
-                ) / a;
+                mm = U / a;
 
-                lambda_xi = (
-                    abs(MM*mm - xi_z_val*xi_z_val)
+                lambda_xi = std::max((
+                    std::abs(MM*mm - xi_z_val*xi_z_val)
                     + sqrt(
                         (mm - MM*xi_z_val)*(mm - MM*xi_z_val)
                         + (xi_r_val*xi_r_val + xi_theta_val*xi_theta_val/r/r)*(MM*MM - 1)
                     )
-                ) / (MM*MM - 1);
-                lambda_th = (
-                    abs(
+                ) / (MM*MM - 1), std::abs(U / w_array[i][j]));
+                lambda_th = std::max((
+                    std::abs(
                         v_array[i][j]*w_array[i][j]/a/a
                     )
                     + sqrt(
                         (v_array[i][j]*v_array[i][j] + w_array[i][j]*w_array[i][j])/a/a - 1
                     )
-                ) / (w_array[i][j]*w_array[i][j]/a/a - 1) / r;
+                ) / (w_array[i][j]*w_array[i][j]/a/a - 1) / r, std::abs(v_array[i][j]/w_array[i][j]/r));
 
                 // Обновление шага dz
                 dz = std::min(dz, 1 / (lambda_xi/dxi + lambda_th/dth));
@@ -703,7 +705,8 @@ std::vector<double> solver(HeatSource heatSource) {
                 << "v=" << v_array[0][0]
                 << " w=" << w_array[0][0]
                 << std::endl;
-                std::exit(1);
+                return {-1.0, -1.0, -1.0};
+                // std::exit(1);
             }
 
             for(int i = 0; i < N; i++){
@@ -737,12 +740,9 @@ std::vector<double> solver(HeatSource heatSource) {
             k++;
         }
     }
-    if(progress_bar)
+    if(progress_bar) {
         std::cout << "100% completed" << std::endl;
-
-    std::cout << "==================================\nLifting force: " << Fy << std::endl;
-    std::cout << "Rotation momentum: " << Mz << std::endl;
-    std::cout << "Q = " << Q << std::endl;
+    }
 
     double finish = omp_get_wtime();
     seconds = finish - start;

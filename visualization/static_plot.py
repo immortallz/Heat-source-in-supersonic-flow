@@ -6,10 +6,10 @@ def r_b(z):
     return np.tan(np.pi/12) * np.sqrt(2*z - 1)
 
 def load_all():
-    data_root_path = '../output_results'
+    data_root_path = '../output_results/'
     zs = np.loadtxt(data_root_path + 'z_out.txt')
     K = zs.size
-    N, M = 200, 600
+    N, M = 400, 1200
     rho = np.loadtxt(data_root_path + 'rho_out.txt').reshape(K,N,M)
     p   = np.loadtxt(data_root_path + 'p_out.txt').reshape(K,N,M)
     u   = np.loadtxt(data_root_path + 'u_out.txt').reshape(K,N,M)

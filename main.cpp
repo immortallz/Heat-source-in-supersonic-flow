@@ -1,5 +1,7 @@
 #include "r.h"
+#include <iostream>
 #include <string>
+#include <fstream>
 #include <nlohmann/json.hpp>
 
 using json = nlohmann::json;
@@ -46,6 +48,15 @@ void force_and_momentum_by_heat_location(int N_z, int N_r, double L = 0.02, doub
             Mz_out << result[1] << " ";
             Q_out << result[2] << " ";
             r += h_r;
+            if (!std::isnan(result[0])) {
+                std::cout << "solver completed successfully for ";
+            } else {
+                std::cout << "solver returned NaN for ";
+            }
+            std::cout << get_body_type_path()
+                + ", Q = " + std::to_string(Q).substr(0, 4)
+                + ", (i, j) = (" + std::to_string(i) + ", " + std::to_string(j) + ")"
+                << std::endl;
         }
         z_out << "\n";
         r_out << "\n";
@@ -111,22 +122,22 @@ int main()
     flowParams.is_adiabatic = false;
 
     bodyParams.transitionPoint = 1.0; // not recommended to change, works bad on other values yet
-    bodyParams.bodyLength = 1.02;
-    bodyParams.bodyType = BodyType::Cylindrical;
+    bodyParams.bodyLength = 2.0;
+    bodyParams.bodyType = BodyType::Parabolic;
 
-    constexpr int numerical_mesh_multiplier = 2;
+    constexpr int numerical_mesh_multiplier = 5;
 
     numericalParams.N = 100 * numerical_mesh_multiplier;
     numericalParams.M = 300 * numerical_mesh_multiplier;
-    numericalParams.CFL = 0.5;
+    numericalParams.CFL = 0.9;
     numericalParams.num_step_percent = 100;
-    numericalParams.files_count = 100;
+    numericalParams.files_count = 400;
     numericalParams.flux_scheme = FluxScheme::MacCormack;
 
-    heatSource.x = tan(PI / 12) + 0.001; // distance from body symmetry axis to heat source i.e. radial distance
+    heatSource.x = 0.4; // distance from body symmetry axis to heat source i.e. radial distance
     heatSource.y = 0.0; // do not change this because we assume source is located in theta=0 plane
-    heatSource.z = 1.001; // distance from beginning of the body to heat source
-    heatSource.L = 0.0001;
+    heatSource.z = 1.1; // distance from beginning of the body to heat source
+    heatSource.L = 0.02;
     heatSource.Q = 1.0 / 20.0;
 
     // tan(pi / 12) ~ 0.26794919243
@@ -134,25 +145,26 @@ int main()
     const double start = omp_get_wtime();
 
     const std::vector<double> res = solver(heatSource);
-    std::cout << "Fy = " << res[0] << std::endl;
-    std::cout << "Mz = " << res[1] << std::endl;
-    std::cout << "Q (total) = " << res[2] << std::endl;
 
-    save_params();
+    std::cout << "Lifting force: " << res[0] << std::endl;
+    std::cout << "Rotation momentum: " << res[1] << std::endl;
+    std::cout << "Q = " << res[2] << std::endl;
 
     // numericalParams.N = 200;
     // numericalParams.M = numericalParams.N * 3;
     // numericalParams.num_step_percent = 1;
     // numericalParams.files_count = 1;
     //
-    // bodyParams.bodyType = BodyType::DoubleCone;
+    // bodyParams.bodyType = BodyType::Cylindrical;
     //
-    // force_and_momentum_by_heat_location(20, 20, 0.02, 0.25);
-    // force_and_momentum_by_heat_location(20, 20, 0.02, 0.05);
+    // force_and_momentum_by_heat_location(30, 30, 0.02, 0.25);
+    // force_and_momentum_by_heat_location(30, 30, 0.02, 0.05);
     //
     // bodyParams.bodyType = BodyType::Parabolic;
     //
-    // force_and_momentum_by_heat_location(20, 20, 0.02, 0.05);
+    // force_and_momentum_by_heat_location(30, 30, 0.02, 0.05);
+
+    save_params();
 
     const double finish = omp_get_wtime();
     const double seconds = finish - start;

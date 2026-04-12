@@ -1,4 +1,5 @@
 #include "r.h"
+#include <cmath>
 
 double r_b(const double z) {
     switch (bodyParams.bodyType)

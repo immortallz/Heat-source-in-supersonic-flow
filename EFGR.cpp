@@ -1,4 +1,5 @@
 #include "r.h"
+#include <cmath>
 
 // Реализация классов E_array и F_array
 E_array::E_array() : BaseArray() {}

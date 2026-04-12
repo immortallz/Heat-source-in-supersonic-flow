@@ -1,4 +1,5 @@
 #include "r.h"
+#include <cmath>
 
 double r_from_xi(const double xi, const double r_s, const double r_b){
     return (r_s - r_b)*xi + r_b;
@@ -19,7 +20,7 @@ double xi_z(const double xi, const double r_s, const double r_b, const double r_
 double lambda_r(const double rho, const double p, const double u, const double v, const double w)
 {
     const double lambda =
-        (abs(rho*u*w) + sqrt(p*rho*(u*u + w*w) - p*p))
+        (std::abs(rho*u*w) + sqrt(p*rho*(u*u + w*w) - p*p))
         / (rho*w*w - p);
     return lambda;
 }

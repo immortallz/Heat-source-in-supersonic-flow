@@ -1,4 +1,7 @@
 #include "r.h"
+#include <iostream>
+#include <cmath>
+#include <fstream>
 
 int main()
 {

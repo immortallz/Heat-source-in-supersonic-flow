@@ -6,8 +6,8 @@ from matplotlib.animation import FuncAnimation
 # --- Общие
 def r_b(z): return np.tan(np.pi/12) * np.sqrt(2*z - 1)
 def load_all():
-    data_root_path = '../output_results'
-    zs = np.loadtxt(data_root_path + 'z_out.txt'); K=zs.size; N,M=200,600
+    data_root_path = '../output_results/'
+    zs = np.loadtxt(data_root_path + 'z_out.txt'); K=zs.size; N,M=400,1200
     rho = np.loadtxt(data_root_path + 'rho_out.txt').reshape(K,N,M)
     p,u,v,w = [np.loadtxt(data_root_path + f).reshape(K,N,M) for f in
         ('p_out.txt','u_out.txt','v_out.txt','w_out.txt')]

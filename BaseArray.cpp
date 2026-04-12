@@ -1,4 +1,5 @@
 #include "r.h"
+#include <iostream>
 
 BaseArray::BaseArray() {
     for (int i = 0; i < SIZE; ++i)
