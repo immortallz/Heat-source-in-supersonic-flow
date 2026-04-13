@@ -8,10 +8,11 @@ def load_all():
     data_root_path = '../output_results/'
     zs = np.loadtxt(data_root_path + 'z_out.txt')
     K=zs.size
-    N,M=400,1200
+    N,M=500,1500
     rho = np.loadtxt(data_root_path + 'rho_out.txt').reshape(K,N,M)
-    p,u,v,w = [np.loadtxt(data_root_path + f).reshape(K,N,M) for f in
-        ('p_out.txt','u_out.txt','v_out.txt','w_out.txt')]
+    # p,u,v,w = [np.loadtxt(data_root_path + f).reshape(K,N,M) for f in
+    #     ('p_out.txt','u_out.txt','v_out.txt','w_out.txt')]
+    p,u,v,w = 0,0,0,0
     rs = np.loadtxt(data_root_path + 'r_s_out.txt')
     return zs, rho,p,u,v,w, rs
 
@@ -38,7 +39,13 @@ def prepare(zs,rs,xi,z_idx,field,var):
 
 def main():
     zs,rho,p,u,v,w,rs = load_all()
-    tab={'rho':rho,'p':p,'u':u,'v':v,'w':w}
+    tab={
+        'rho':rho,
+        'p':p,
+        'u':u,
+        'v':v,
+        'w':w
+    }
     var=input("Введите (rho,p,u,v,w): ").strip()
     field=tab[var]
     K,N,M = field.shape

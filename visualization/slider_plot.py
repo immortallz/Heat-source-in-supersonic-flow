@@ -8,10 +8,11 @@ def load_all():
     data_root_path = '../output_results/'
     zs = np.loadtxt(data_root_path + 'z_out.txt')
     K = zs.size
-    N,M = 400,1200
+    N,M = 500,1500
     rho = np.loadtxt(data_root_path + 'rho_out.txt').reshape(K,N,M)
-    p,u,v,w = [np.loadtxt(data_root_path + f).reshape(K,N,M) for f in 
-        ('p_out.txt','u_out.txt','v_out.txt','w_out.txt')]
+    # p,u,v,w = [np.loadtxt(data_root_path + f).reshape(K,N,M) for f in
+    #     ('p_out.txt','u_out.txt','v_out.txt','w_out.txt')]
+    p,u,v,w = 0,0,0,0
     rs = np.loadtxt(data_root_path + 'r_s_out.txt')
     return zs, rho,p,u,v,w, rs
 

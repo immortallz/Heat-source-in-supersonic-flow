@@ -5,6 +5,7 @@ Runge-Kutta/*.txt
 *.txt
 *.o
 *.exe
+*.out
 123.nb
 .ipynb_checkpoints/
 cone17.f90
@@ -16,3 +17,4 @@ cone17.f90
 *.DS_Store
 project
 numerical_convergence/
+visualization/__pycache__/
