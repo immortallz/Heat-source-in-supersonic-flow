@@ -5,10 +5,10 @@
 
 VolterraParams get_default_volterra_params() {
     VolterraParams params;
-    params.Mach = 3.0;
-    params.Q = 1.0;
-    params.r_source = 1.1;
-    params.x_source = -params.r_source;  // default: xu = -ru
+    params.Mach = sqrt(2); // unused
+    params.Q = pow(PI, 1.5) / 20.0 * 1.2255 * pow(2*1.4*101330/1.2255, 1.5) * pow(0.01, 2);
+    params.r_source = 1.2;
+    params.x_source = -1.2;  // default: xu = -ru
     params.L = 10.0;
     params.N = 10000;
     params.h_integral = 1e-3;

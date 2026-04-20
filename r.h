@@ -41,6 +41,7 @@ struct NumericalParams {
 	int num_step_percent;
 	int files_count;
 	FluxScheme flux_scheme;
+	bool log_force_and_momentum_only;
 };
 
 struct HeatSource {

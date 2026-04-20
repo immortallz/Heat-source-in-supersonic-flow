@@ -5,6 +5,7 @@ double r_b(const double z) {
     switch (bodyParams.bodyType)
     {
         case BodyType::Cylindrical:
+            // return 1.0;
             return tan(PI / 12.0);
 
         case BodyType::Cone:

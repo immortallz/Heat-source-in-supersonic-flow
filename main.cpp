@@ -23,7 +23,12 @@ std::string get_body_type_path() {
 
 void force_and_momentum_by_heat_location(int N_z, int N_r, double L = 0.02, double Q = 1.0/20.0)
 {
-    std::string basePath = "heat_source_variation/" + get_body_type_path() + "/Q_" + std::to_string(Q).substr(0, 4) + "/";
+    numericalParams.log_force_and_momentum_only = true;
+    std::string basePath =
+        "heat_source_variation/"
+        + get_body_type_path()
+        + "_L_" + std::to_string(bodyParams.bodyLength).substr(0, 3)
+        + "/Q_" + std::to_string(Q).substr(0, 4) + "/";
     std::ofstream
         Fy_out(basePath + "Fy_out_heat.txt"),
         Mz_out(basePath + "Mz_out_heat.txt"),
@@ -38,7 +43,7 @@ void force_and_momentum_by_heat_location(int N_z, int N_r, double L = 0.02, doub
 
     for (int i = 0; i < N_z + 1; i++) {
         r = r_b(z);
-        h_r = (tan(PI / 12.0)*2.0 - r_b(z)) / N_r;
+        h_r = (tan(PI / 12.0)*2.0 - r_b(z)) / N_r; // hardcoded upper limit = tan(PI / 12.0)*2.0
         for (int j = 0; j < N_r + 1; j++) {
             HeatSource src {r, 0, z, L, Q};
             result = solver(src);
@@ -114,7 +119,7 @@ void save_params()
 
 int main()
 {
-    flowParams.Mach_inf = 3;
+    flowParams.Mach_inf = sqrt(2);
     flowParams.p_inf = 101330;
     flowParams.rho_inf = 1.2255;
     flowParams.a_inf = sqrt(GAMMA * flowParams.p_inf / flowParams.rho_inf);
@@ -122,44 +127,47 @@ int main()
     flowParams.is_adiabatic = false;
 
     bodyParams.transitionPoint = 1.0; // not recommended to change, works bad on other values yet
-    bodyParams.bodyLength = 2.0;
-    bodyParams.bodyType = BodyType::Parabolic;
+    bodyParams.bodyLength = bodyParams.transitionPoint + 5.0;
+    bodyParams.bodyType = BodyType::Cylindrical;
 
-    constexpr int numerical_mesh_multiplier = 5;
+    constexpr int numerical_mesh_multiplier = 16;
 
     numericalParams.N = 100 * numerical_mesh_multiplier;
     numericalParams.M = 300 * numerical_mesh_multiplier;
     numericalParams.CFL = 0.9;
-    numericalParams.num_step_percent = 100;
-    numericalParams.files_count = 400;
+    numericalParams.num_step_percent = 1000;
+    numericalParams.files_count = 10000;
     numericalParams.flux_scheme = FluxScheme::MacCormack;
+    numericalParams.log_force_and_momentum_only = false;
 
-    heatSource.x = 0.4; // distance from body symmetry axis to heat source i.e. radial distance
+    double r_b_value = r_b(bodyParams.transitionPoint);
+    std::cout << "r_b_value = " << r_b_value << std::endl;
+    heatSource.x = 1.2 * r_b_value; // distance from body symmetry axis to heat source i.e. radial distance
+    heatSource.L = 0.01 * r_b_value;
     heatSource.y = 0.0; // do not change this because we assume source is located in theta=0 plane
-    heatSource.z = 1.1; // distance from beginning of the body to heat source
-    heatSource.L = 0.02;
+    heatSource.z = 4.3; // distance from beginning of the body to heat source
     heatSource.Q = 1.0 / 20.0;
 
     // tan(pi / 12) ~ 0.26794919243
 
     const double start = omp_get_wtime();
 
-    const std::vector<double> res = solver(heatSource);
-
-    std::cout << "Lifting force: " << res[0] << std::endl;
-    std::cout << "Rotation momentum: " << res[1] << std::endl;
-    std::cout << "Q = " << res[2] << std::endl;
-
-    // numericalParams.N = 200;
-    // numericalParams.M = numericalParams.N * 3;
-    // numericalParams.num_step_percent = 1;
-    // numericalParams.files_count = 1;
+    // const std::vector<double> res = solver(heatSource);
     //
-    // bodyParams.bodyType = BodyType::Cylindrical;
-    //
+    // std::cout << "Lifting force: " << res[0] << std::endl;
+    // std::cout << "Rotation momentum: " << res[1] << std::endl;
+    // std::cout << "Q = " << res[2] << std::endl;
+
+    numericalParams.N = 200;
+    numericalParams.M = numericalParams.N * 3;
+    numericalParams.num_step_percent = 1;
+    numericalParams.files_count = 1;
+
+    bodyParams.bodyType = BodyType::Cylindrical;
+
     // force_and_momentum_by_heat_location(30, 30, 0.02, 0.25);
-    // force_and_momentum_by_heat_location(30, 30, 0.02, 0.05);
-    //
+    force_and_momentum_by_heat_location(1, 1, 0.02, 1.0 / 20.0);
+
     // bodyParams.bodyType = BodyType::Parabolic;
     //
     // force_and_momentum_by_heat_location(30, 30, 0.02, 0.05);

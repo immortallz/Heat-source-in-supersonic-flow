@@ -183,31 +183,35 @@ std::vector<double> solver(HeatSource heatSource) {
         }
     }
     // Запись в файлы
-    for(int i = 0; i < N; i++){
-        for(int j = 0; j < M; j++){
-            rho_out << rho_array[i][j] << " ";
-            p_out << p_array[i][j] << " ";
-            u_out << u_array[i][j] << " ";
-            v_out << v_array[i][j] << " ";
-            w_out << w_array[i][j] << " ";
+    if (!numericalParams.log_force_and_momentum_only) {
+        for(int i = 0; i < N; i++){
+            for(int j = 0; j < M; j++){
+                rho_out << rho_array[i][j] << " ";
+                p_out << p_array[i][j] << " ";
+                u_out << u_array[i][j] << " ";
+                v_out << v_array[i][j] << " ";
+                w_out << w_array[i][j] << " ";
+            }
+            rho_out << "\n";
+            p_out << "\n";
+            u_out << "\n";
+            v_out << "\n";
+            w_out << "\n";
         }
-        rho_out << "\n";
-        p_out << "\n";
-        u_out << "\n";
-        v_out << "\n";
-        w_out << "\n";
     }
     Fy_out << Fy << " ";
     Mz_out << Mz << " ";
 
-    for(int j = 0; j < M; j++){
-        r_s_out << r_s0 << " ";
-        r_s_theta_out << 0 << " ";
-        r_s_z_out << r_s_z0 << " ";
+    if (!numericalParams.log_force_and_momentum_only) {
+        for(int j = 0; j < M; j++){
+            r_s_out << r_s0 << " ";
+            r_s_theta_out << 0 << " ";
+            r_s_z_out << r_s_z0 << " ";
+        }
+        r_s_out << "\n";
+        r_s_theta_out << "\n";
+        r_s_z_out << "\n";
     }
-    r_s_out << "\n";
-    r_s_theta_out << "\n";
-    r_s_z_out << "\n";
 
     // Интегрирование уравнения d(psi)/dr = rho*w*r
     psi0[0] = 0;
@@ -225,12 +229,12 @@ std::vector<double> solver(HeatSource heatSource) {
         psi1[i] = psi1[i - 1] + rho_array[i][M - 1] * w_array[i][M - 1] * r * dr;
     }
 
-    for(int i = 0; i < N; i++){
-        psi0_out << psi0[i] << " ";
-        psi1_out << psi1[i] << " ";
-    }
-    psi0_out << "\n";
-    psi1_out << "\n";
+    // for(int i = 0; i < N; i++){
+    //     psi0_out << psi0[i] << " ";
+    //     psi1_out << psi1[i] << " ";
+    // }
+    // psi0_out << "\n";
+    // psi1_out << "\n";
 
     double dz, lambda_xi, lambda_th;
     double MM, mm, xi_z_val, xi_r_val, xi_theta_val;
@@ -614,14 +618,14 @@ std::vector<double> solver(HeatSource heatSource) {
                     psi1[i] = psi1[i - 1] + rho_array[i][M - 1] * w_array[i][M - 1] * r * dr;
                 }
 
-                if(z > z0 + double(k)/double(files_count) || z >= L){
-                    for(int i = 0; i < N; i++){
-                        psi0_out << psi0[i] << " ";
-                        psi1_out << psi1[i] << " ";
-                    }
-                    psi0_out << "\n";
-                    psi1_out << "\n";
-                }
+                // if(z > z0 + double(k)/double(files_count) || z >= L){
+                //     for(int i = 0; i < N; i++){
+                //         psi0_out << psi0[i] << " ";
+                //         psi1_out << psi1[i] << " ";
+                //     }
+                //     psi0_out << "\n";
+                //     psi1_out << "\n";
+                // }
             }
 
             //Поправка векторов E, F, G, R на границах
@@ -709,34 +713,38 @@ std::vector<double> solver(HeatSource heatSource) {
                 // std::exit(1);
             }
 
-            for(int i = 0; i < N; i++){
-                for(int j = 0; j < M; j++)
-                {
-                    rho_out << rho_array[i][j] << " ";
-                    p_out << p_array[i][j] << " ";
-                    u_out << u_array[i][j] << " ";
-                    v_out << v_array[i][j] << " ";
-                    w_out << w_array[i][j] << " ";
+            if (!numericalParams.log_force_and_momentum_only) {
+                for(int i = 0; i < N; i++){
+                    for(int j = 0; j < M; j++)
+                    {
+                        rho_out << rho_array[i][j] << " ";
+                        p_out << p_array[i][j] << " ";
+                        u_out << u_array[i][j] << " ";
+                        v_out << v_array[i][j] << " ";
+                        w_out << w_array[i][j] << " ";
+                    }
+                    rho_out << "\n";
+                    p_out << "\n";
+                    u_out << "\n";
+                    v_out << "\n";
+                    w_out << "\n";
                 }
-                rho_out << "\n";
-                p_out << "\n";
-                u_out << "\n";
-                v_out << "\n";
-                w_out << "\n";
             }
             Fy_out << Fy << " ";
             Mz_out << Mz << " ";
         }
 
         if(z > z0 + double(k)/double(files_count) || z >= L) {
-            for(int j = 0; j < M; j++){
-                r_s_out << r_s[j].back() << " ";
-                r_s_theta_out << r_s_theta[j].back() << " ";
-                r_s_z_out << r_s_z[j].back() << " ";
+            if (!numericalParams.log_force_and_momentum_only) {
+                for(int j = 0; j < M; j++){
+                    r_s_out << r_s[j].back() << " ";
+                    r_s_theta_out << r_s_theta[j].back() << " ";
+                    r_s_z_out << r_s_z[j].back() << " ";
+                }
+                r_s_out << "\n";
+                r_s_theta_out << "\n";
+                r_s_z_out << "\n";
             }
-            r_s_out << "\n";
-            r_s_theta_out << "\n";
-            r_s_z_out << "\n";
             k++;
         }
     }
